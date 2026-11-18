@@ -309,7 +309,7 @@
             <i class="fa-solid fa-calendar-check"></i> 1. Confirmar Reserva
           </button>
 
-          <button id="btnExtend" onclick="extendRenderSession()" disabled class="w-full py-2 px-4 bg-slate-200 text-slate-400 border border-slate-200 rounded-xl font-semibold text-xs transition flex items-center justify-center gap-2 cursor-not-allowed" title="Función exclusiva para estudiantes de Arquitectura">
+          <button id="btnExtend" onclick="extendRenderSession()" disabled class="w-full py-2 px-4 bg-slate-200 text-slate-400 border border-slate-200 rounded-xl font-semibold text-xs transition flex items-center justify-center gap-2 cursor-not-allowed" title="Requiere check-in por QR en sala">
             <i class="fa-solid fa-clock-rotate-left"></i> 2. Extender Render (+2h)
           </button>
 
@@ -1122,25 +1122,23 @@
       closeModal('modalConfirmReservation');
       setReservationLockState(true);
 
-      const selectedNodes = document.querySelectorAll('.node-sel');
-      selectedNodes.forEach(node => {
-        node.classList.remove('node-sel', 'node-disp');
-        node.classList.add('node-checked');
-      });
+      // Deshabilitar botón de confirmar reserva para que no se pueda reservar otro
+      const btnConfirm = document.getElementById('btnConfirm');
+      btnConfirm.disabled = true;
+      btnConfirm.className = "w-full py-2.5 px-4 bg-slate-200 text-slate-400 rounded-xl font-bold text-xs cursor-not-allowed transition flex items-center justify-center gap-2";
 
-      const btnExtend = document.getElementById('btnExtend');
+      const footerBtnConfirm = document.getElementById('footerBtnConfirm');
+      footerBtnConfirm.disabled = true;
+      footerBtnConfirm.className = "px-6 py-2 bg-slate-700 text-slate-400 rounded-lg font-bold text-xs shadow-lg cursor-not-allowed transition flex items-center gap-2";
+
+      // Nota: El botón de extender render SE MANTIENE DESHABILITADO hasta que se haga el Check-in por QR real
+
       const btnRelease = document.getElementById('btnRelease');
-
-      if (currentProfile === 'ARQ') {
-        btnExtend.disabled = false;
-        btnExtend.className = "w-full py-2 px-4 bg-amber-500 hover:bg-amber-600 text-white rounded-xl font-bold text-xs shadow transition cursor-pointer flex items-center justify-center gap-2";
-      }
-
       btnRelease.disabled = false;
       btnRelease.className = "w-full py-2 px-4 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded-xl font-semibold text-xs cursor-pointer transition flex items-center justify-center gap-2";
 
       updateManagementPanel();
-      showAlert(`Reserva y Registro confirmados exitosamente hasta las ${endCalc.timeText}.`, 'emerald');
+      showAlert(`Reserva registrada con éxito hasta las ${endCalc.timeText}. Falta realizar Check-in escaneando el QR físico en la sala.`, 'blue');
     }
 
     function extendRenderSession() {
@@ -1232,6 +1230,18 @@
                 node.classList.remove('node-disp', 'node-ocup');
                 node.classList.add('node-checked');
                 setReservationLockState(true);
+                
+                // Al hacer el Check-in real por QR, se activa el botón de Extender Render si es ARQ
+                const btnExtend = document.getElementById('btnExtend');
+                if (currentProfile === 'ARQ') {
+                  btnExtend.disabled = false;
+                  btnExtend.className = "w-full py-2 px-4 bg-amber-500 hover:bg-amber-600 text-white rounded-xl font-bold text-xs shadow transition cursor-pointer flex items-center justify-center gap-2";
+                }
+
+                const btnRelease = document.getElementById('btnRelease');
+                btnRelease.disabled = false;
+                btnRelease.className = "w-full py-2 px-4 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded-xl font-semibold text-xs cursor-pointer transition flex items-center justify-center gap-2";
+
                 showAlert(`¡Escaneo de QR físico detectado con éxito! Check-in automático verificado para la ${salaParam}.`, 'emerald');
               }
             }, 300);

@@ -604,9 +604,6 @@
       document.getElementById('loginScreen').classList.add('hidden');
       document.getElementById('mainApp').classList.remove('hidden');
       lucide.createIcons();
-
-      // <--- DETECCIÓN AUTOMÁTICA DEL QR FÍSICO AL ESCANEARSE EN LA PUERTA --->
-      checkUrlQrParam();
     }
 
     function logout() {
@@ -1122,7 +1119,6 @@
       closeModal('modalConfirmReservation');
       setReservationLockState(true);
 
-      // Deshabilitar botón de confirmar reserva para que no se pueda reservar otro
       const btnConfirm = document.getElementById('btnConfirm');
       btnConfirm.disabled = true;
       btnConfirm.className = "w-full py-2.5 px-4 bg-slate-200 text-slate-400 rounded-xl font-bold text-xs cursor-not-allowed transition flex items-center justify-center gap-2";
@@ -1130,8 +1126,6 @@
       const footerBtnConfirm = document.getElementById('footerBtnConfirm');
       footerBtnConfirm.disabled = true;
       footerBtnConfirm.className = "px-6 py-2 bg-slate-700 text-slate-400 rounded-lg font-bold text-xs shadow-lg cursor-not-allowed transition flex items-center gap-2";
-
-      // Nota: El botón de extender render SE MANTIENE DESHABILITADO hasta que se haga el Check-in por QR real
 
       const btnRelease = document.getElementById('btnRelease');
       btnRelease.disabled = false;
@@ -1216,11 +1210,19 @@
       document.getElementById(id).classList.add('hidden');
     }
 
-    // --- DETECTOR AUTOMÁTICO DE QR FÍSICO REAL (vía URL) ---
+    // --- DETECTOR AUTOMÁTICO DE QR FÍSICO REAL (vía URL con bypass de login) ---
     function checkUrlQrParam() {
       const urlParams = new URLSearchParams(window.location.search);
       const salaParam = urlParams.get('sala');
       if (salaParam) {
+        // Al escanear un QR real, saltamos el login automáticamente para realizar el check-in directo
+        document.getElementById('loggedStudentEmail').innerText = 'estudiante.qr@continental.edu.pe';
+        applyProfileRules('ARQ');
+
+        document.getElementById('loginScreen').classList.add('hidden');
+        document.getElementById('mainApp').classList.remove('hidden');
+        lucide.createIcons();
+
         for (const [key, val] of Object.entries(spacesDB)) {
           if (val.code === salaParam) {
             switchFloor(val.floor);
@@ -1231,12 +1233,9 @@
                 node.classList.add('node-checked');
                 setReservationLockState(true);
                 
-                // Al hacer el Check-in real por QR, se activa el botón de Extender Render si es ARQ
                 const btnExtend = document.getElementById('btnExtend');
-                if (currentProfile === 'ARQ') {
-                  btnExtend.disabled = false;
-                  btnExtend.className = "w-full py-2 px-4 bg-amber-500 hover:bg-amber-600 text-white rounded-xl font-bold text-xs shadow transition cursor-pointer flex items-center justify-center gap-2";
-                }
+                btnExtend.disabled = false;
+                btnExtend.className = "w-full py-2 px-4 bg-amber-500 hover:bg-amber-600 text-white rounded-xl font-bold text-xs shadow transition cursor-pointer flex items-center justify-center gap-2";
 
                 const btnRelease = document.getElementById('btnRelease');
                 btnRelease.disabled = false;
@@ -1258,6 +1257,9 @@
       updateHeaderTimeDisplay();
       updateManagementPanel();
       lucide.createIcons();
+
+      // Ejecutar la revisión de QR ni bien carga la página
+      checkUrlQrParam();
     };
   </script>
 </body>

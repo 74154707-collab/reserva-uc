@@ -32,7 +32,6 @@
   <style>
     body { font-family: 'Inter', sans-serif; }
     
-    /* Transiciones de nodos de mapa */
     .space-node {
       transition: all 0.2s ease-in-out;
       cursor: pointer;
@@ -42,7 +41,6 @@
       transform: scale(1.02);
     }
     
-    /* Estados de Color Estrictos */
     .node-disp rect, .node-disp path { fill: #e2e8f0; stroke: #94a3b8; stroke-width: 1.5; }
     .node-disp text { fill: #334155; }
     
@@ -304,35 +302,15 @@
           </div>
 
           <div id="statusAlert" class="hidden p-3 rounded-xl text-xs font-semibold mb-3 flex items-start gap-2"></div>
-
-          <!-- Ticket QR Digital -->
-          <div id="qrTicketBox" class="hidden bg-slate-900 text-white p-4 rounded-xl border border-slate-800 mb-3 text-center shadow-lg">
-            <span class="text-[10px] uppercase font-bold text-uc-lightPurple tracking-wider block mb-1">Pase Digital de Reserva UC</span>
-            <div class="bg-white p-2.5 rounded-lg my-1 inline-block shadow">
-              <svg class="w-24 h-24 mx-auto" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M0 0h35v35H0zM10 10h15v15H10zM65 0h35v35H65zM75 10h15v15H75zM0 65h35v35H0zM10 75h15v15H10z" fill="#3B1B61"/>
-                <path d="M40 5h10v10H40zM50 20h10v15H50zM20 40h15v10H20zM40 40h20v20H40zM65 45h10v10H65zM80 40h15v10H80z" fill="#532885"/>
-                <path d="M45 65h10v15H45zM60 65h15v10H60zM80 65h10v20H80zM65 80h10v15H65zM40 85h20v10H40z" fill="#3B1B61"/>
-              </svg>
-            </div>
-            <p class="text-xs font-mono text-slate-300">CÓDIGO: <span id="qrCodeText" class="text-amber-400 font-bold">UC-ARQ-8942</span></p>
-            <p id="ticketDateSummary" class="text-[11px] text-amber-200 mt-1 font-bold">Fecha: 23/10/2026</p>
-            <p id="ticketDurationSummary" class="text-[11px] text-amber-300 mt-0.5 font-semibold">Duración: 4 Horas (10:30 - 14:30)</p>
-            <p class="text-[10px] text-slate-400 mt-1">Escanea este QR en la mesa para hacer Check-in.</p>
-          </div>
         </div>
 
         <div id="actionControls" class="space-y-2 pt-2 border-t border-slate-100">
           <button id="btnConfirm" onclick="openConfirmModal()" disabled class="w-full py-2.5 px-4 bg-slate-200 text-slate-400 rounded-xl font-bold text-xs transition flex items-center justify-center gap-2 cursor-not-allowed">
             <i class="fa-solid fa-calendar-check"></i> 1. Confirmar Reserva
           </button>
-          
-          <button id="btnQR" onclick="simulateQRCheckIn()" disabled class="w-full py-2 px-4 bg-slate-200 text-slate-400 border border-slate-200 rounded-xl font-semibold text-xs transition flex items-center justify-center gap-2 cursor-not-allowed">
-            <i class="fa-solid fa-qrcode"></i> 2. Simular Check-in por QR
-          </button>
 
           <button id="btnExtend" onclick="extendRenderSession()" disabled class="w-full py-2 px-4 bg-slate-200 text-slate-400 border border-slate-200 rounded-xl font-semibold text-xs transition flex items-center justify-center gap-2 cursor-not-allowed" title="Función exclusiva para estudiantes de Arquitectura">
-            <i class="fa-solid fa-clock-rotate-left"></i> 3. Extender Render (+2h)
+            <i class="fa-solid fa-clock-rotate-left"></i> 2. Extender Render (+2h)
           </button>
 
           <button id="btnRelease" onclick="releaseSpace()" disabled class="w-full py-2 px-4 bg-slate-200 text-slate-400 rounded-xl font-semibold text-xs transition flex items-center justify-center gap-2 cursor-not-allowed">
@@ -451,7 +429,7 @@
     </div>
   </div>
 
-  <!-- MODAL: PANEL DE CONFIRMACIÓN CON LISTA DESPLEGABLE DE DURACIÓN (1 A 12 HORAS) -->
+  <!-- MODAL: PANEL DE CONFIRMACIÓN -->
   <div id="modalConfirmReservation" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[90] hidden flex items-center justify-center p-4">
     <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden border animate-in fade-in zoom-in duration-200">
       
@@ -477,7 +455,7 @@
 
         <div>
           <label class="block font-bold text-slate-700 mb-1.5 flex items-center gap-1.5">
-            <i data-lucide="phone" class="w-3.5 h-3.5 text-uc-purple"></i> Número de Celular (Para notificaciones SMS/WhatsApp de tu QR)
+            <i data-lucide="phone" class="w-3.5 h-3.5 text-uc-purple"></i> Número de Celular (Para notificaciones SMS/WhatsApp)
           </label>
           <input type="tel" id="inputUserPhone" placeholder="987654321" maxlength="9" class="w-full px-3 py-2 border border-slate-300 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-uc-purple outline-none" required>
         </div>
@@ -487,7 +465,6 @@
             <i data-lucide="clock" class="w-3.5 h-3.5 text-uc-purple"></i> Duración del Bloque de Estudio
           </label>
           
-          <!-- Lista desplegable (Select) de 1 a 12 horas -->
           <select id="modalDurationSelect" onchange="onDurationChanged()" class="w-full border border-slate-300 rounded-xl px-3 py-2.5 text-xs bg-purple-50/50 font-bold text-uc-purple focus:ring-2 focus:ring-uc-purple outline-none">
             <option value="1">1 Hora</option>
             <option value="2" selected>2 Horas</option>
@@ -516,7 +493,7 @@
           Cancelar
         </button>
         <button onclick="submitFinalReservation()" class="px-5 py-2 bg-uc-purple hover:bg-purple-900 text-white rounded-lg font-bold transition flex items-center gap-1.5 shadow">
-          <i data-lucide="check" class="w-4 h-4"></i> Generar Pase y Confirmar
+          <i data-lucide="check" class="w-4 h-4"></i> Confirmar y Registrar Reserva
         </button>
       </div>
 
@@ -628,7 +605,7 @@
       document.getElementById('mainApp').classList.remove('hidden');
       lucide.createIcons();
 
-      // <--- VALIDACIÓN AUTOMÁTICA DEL QR FÍSICO AL ENTRAR CON PARÁMETRO --->
+      // <--- DETECCIÓN AUTOMÁTICA DEL QR FÍSICO AL ESCANEARSE EN LA PUERTA --->
       checkUrlQrParam();
     }
 
@@ -641,7 +618,6 @@
       });
       resetActionButtons();
       updateManagementPanel();
-      document.getElementById('qrTicketBox').classList.add('hidden');
       document.getElementById('statusAlert').classList.add('hidden');
       document.getElementById('mainApp').classList.add('hidden');
       document.getElementById('loginScreen').classList.remove('hidden');
@@ -1043,7 +1019,7 @@
         const chip = document.createElement('span');
         if (hasActiveReservation) {
           chip.className = "bg-emerald-600/30 text-emerald-300 border border-emerald-500/40 px-2.5 py-1 rounded-md text-[11px] font-semibold";
-          chip.innerText = `${data.code || id.toUpperCase()} (Reservado)`;
+          chip.innerText = `${data.code || id.toUpperCase()} (Reservado / Check-in)`;
         } else {
           chip.className = "bg-blue-600/30 text-blue-300 border border-blue-500/40 px-2.5 py-1 rounded-md text-[11px] font-semibold";
           chip.innerText = `${data.code || id.toUpperCase()}`;
@@ -1143,43 +1119,14 @@
 
       const endCalc = calculateEndDateTime(selectedReservationDate, startHour, confirmedDurationHours);
 
-      document.getElementById('ticketDateSummary').innerText = `Inicio: ${formatDateDisplay(selectedReservationDate)} (${startFmt(startHour)})`;
-      document.getElementById('ticketDurationSummary').innerText = `Fin: ${endCalc.fullText} • Cel: ${phoneInput}`;
-
       closeModal('modalConfirmReservation');
       setReservationLockState(true);
 
-      document.getElementById('qrTicketBox').classList.remove('hidden');
-      document.getElementById('qrCodeText').innerText = `UC-${currentProfile}-2026-CONF`;
-      
-      const btnConfirm = document.getElementById('btnConfirm');
-      btnConfirm.disabled = true;
-      btnConfirm.className = "w-full py-2.5 px-4 bg-slate-100 text-slate-400 rounded-xl font-bold text-xs cursor-not-allowed flex items-center justify-center gap-2";
-
-      const footerBtnConfirm = document.getElementById('footerBtnConfirm');
-      footerBtnConfirm.disabled = true;
-      footerBtnConfirm.className = "px-6 py-2 bg-slate-700 text-slate-400 rounded-lg font-bold text-xs cursor-not-allowed flex items-center gap-2";
-
-      const btnQR = document.getElementById('btnQR');
-      btnQR.disabled = false;
-      btnQR.className = "w-full py-2 px-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold text-xs shadow transition cursor-pointer flex items-center justify-center gap-2";
-      
-      updateManagementPanel();
-      showAlert(`Reserva confirmada con término el ${endCalc.fullText}. Te enviamos el QR al WhatsApp del ${phoneInput}.`, 'blue');
-    }
-
-    function simulateQRCheckIn() {
       const selectedNodes = document.querySelectorAll('.node-sel');
       selectedNodes.forEach(node => {
         node.classList.remove('node-sel', 'node-disp');
         node.classList.add('node-checked');
       });
-
-      showAlert('¡Check-in Verificado por QR! Tu espacio figura en VERDE.', 'emerald');
-      
-      const btnQR = document.getElementById('btnQR');
-      btnQR.disabled = true;
-      btnQR.className = "w-full py-2 px-4 bg-slate-100 text-slate-400 border border-slate-200 rounded-xl font-semibold text-xs cursor-not-allowed flex items-center justify-center gap-2";
 
       const btnExtend = document.getElementById('btnExtend');
       const btnRelease = document.getElementById('btnRelease');
@@ -1187,15 +1134,13 @@
       if (currentProfile === 'ARQ') {
         btnExtend.disabled = false;
         btnExtend.className = "w-full py-2 px-4 bg-amber-500 hover:bg-amber-600 text-white rounded-xl font-bold text-xs shadow transition cursor-pointer flex items-center justify-center gap-2";
-      } else {
-        btnExtend.disabled = true;
-        btnExtend.className = "w-full py-2 px-4 bg-slate-200 text-slate-400 border border-slate-200 rounded-xl font-semibold text-xs transition flex items-center justify-center gap-2 opacity-50";
       }
 
       btnRelease.disabled = false;
       btnRelease.className = "w-full py-2 px-4 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded-xl font-semibold text-xs cursor-pointer transition flex items-center justify-center gap-2";
 
       updateManagementPanel();
+      showAlert(`Reserva y Registro confirmados exitosamente hasta las ${endCalc.timeText}.`, 'emerald');
     }
 
     function extendRenderSession() {
@@ -1211,7 +1156,6 @@
       });
 
       setReservationLockState(false);
-      document.getElementById('qrTicketBox').classList.add('hidden');
       showAlert('Espacio liberado con éxito. Ya puedes seleccionar y reservar un nuevo espacio.', 'slate');
       
       resetActionButtons();
@@ -1237,10 +1181,6 @@
       const footerBtnConfirm = document.getElementById('footerBtnConfirm');
       footerBtnConfirm.disabled = true;
       footerBtnConfirm.className = "px-6 py-2 bg-slate-700 text-slate-400 rounded-lg font-bold text-xs cursor-not-allowed transition flex items-center gap-2";
-
-      const btnQR = document.getElementById('btnQR');
-      btnQR.disabled = true;
-      btnQR.className = "w-full py-2 px-4 bg-slate-200 text-slate-400 border border-slate-200 rounded-xl font-semibold text-xs cursor-not-allowed flex items-center justify-center gap-2";
 
       const btnExtend = document.getElementById('btnExtend');
       btnExtend.disabled = true;
@@ -1278,7 +1218,7 @@
       document.getElementById(id).classList.add('hidden');
     }
 
-    // --- DETECCIÓN REAL AUTOMÁTICA DEL QR FÍSICO POR URL ---
+    // --- DETECTOR AUTOMÁTICO DE QR FÍSICO REAL (vía URL) ---
     function checkUrlQrParam() {
       const urlParams = new URLSearchParams(window.location.search);
       const salaParam = urlParams.get('sala');
@@ -1292,8 +1232,6 @@
                 node.classList.remove('node-disp', 'node-ocup');
                 node.classList.add('node-checked');
                 setReservationLockState(true);
-                document.getElementById('qrTicketBox').classList.remove('hidden');
-                document.getElementById('qrCodeText').innerText = `CHECK-IN: ${salaParam}`;
                 showAlert(`¡Escaneo de QR físico detectado con éxito! Check-in automático verificado para la ${salaParam}.`, 'emerald');
               }
             }, 300);

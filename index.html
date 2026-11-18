@@ -1,0 +1,1316 @@
+<!DOCTYPE html>
+<html lang="es" class="h-full bg-slate-100">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Reserva de Espacios & Módulos de Render - UC Huancayo</title>
+  
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            uc: {
+              purple: '#532885',
+              darkPurple: '#3B1B61',
+              lightPurple: '#E2D8F0',
+              accent: '#6B35A8',
+            }
+          }
+        }
+      }
+    }
+  </script>
+  
+  <!-- FontAwesome Icons & Lucide Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  
+  <style>
+    body { font-family: 'Inter', sans-serif; }
+    
+    /* Transiciones de nodos de mapa */
+    .space-node {
+      transition: all 0.2s ease-in-out;
+      cursor: pointer;
+    }
+    .space-node:hover {
+      filter: brightness(0.9);
+      transform: scale(1.02);
+    }
+    
+    /* Estados de Color Estrictos */
+    .node-disp rect, .node-disp path { fill: #e2e8f0; stroke: #94a3b8; stroke-width: 1.5; }
+    .node-disp text { fill: #334155; }
+    
+    .node-sel rect, .node-sel path { fill: #2563eb; stroke: #1d4ed8; stroke-width: 2; }
+    .node-sel text { fill: #ffffff !important; }
+    
+    .node-ocup rect, .node-ocup path { fill: #ef4444; stroke: #dc2626; stroke-width: 1.5; cursor: pointer; }
+    .node-ocup text { fill: #ffffff !important; }
+
+    .node-checked rect, .node-checked path { fill: #10b981; stroke: #059669; stroke-width: 2; }
+    .node-checked text { fill: #ffffff !important; }
+
+    .node-dimmed {
+      opacity: 0.25 !important;
+      filter: grayscale(80%) !important;
+      pointer-events: none !important;
+      cursor: not-allowed !important;
+    }
+
+    .map-locked .space-node:not(.node-sel):not(.node-checked) {
+      opacity: 0.35 !important;
+      pointer-events: none !important;
+      cursor: not-allowed !important;
+    }
+    .map-locked .space-node.node-sel,
+    .map-locked .space-node.node-checked {
+      pointer-events: none !important;
+      cursor: default !important;
+    }
+
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: #f1f5f9; }
+    ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col text-slate-800 antialiased selection:bg-uc-purple selection:text-white">
+
+  <!-- ==================== PANTALLA DE LOGIN UC ==================== -->
+  <div id="loginScreen" class="fixed inset-0 z-[100] bg-gradient-to-br from-uc-darkPurple via-uc-purple to-slate-900 flex items-center justify-center p-4 overflow-y-auto">
+    <div class="bg-white rounded-3xl shadow-2xl max-w-md w-full overflow-hidden border border-purple-200/30 my-auto">
+      
+      <div class="bg-uc-purple text-white p-6 text-center relative overflow-hidden">
+        <div class="w-14 h-14 bg-white text-uc-purple font-black text-2xl tracking-wider flex items-center justify-center rounded-2xl shadow-lg mx-auto mb-3 border-2 border-purple-200">
+          UC
+        </div>
+        <h1 class="font-extrabold text-lg tracking-tight">PORTAL DE RESERVAS UC</h1>
+        <p class="text-xs text-uc-lightPurple mt-1">Campus Huancayo • Acceso Exclusivo Estudiantes</p>
+      </div>
+
+      <form onsubmit="handleLogin(event)" class="p-6 space-y-4">
+        <div>
+          <label class="block text-xs font-bold text-slate-700 mb-1.5">Correo Institucional UC</label>
+          <div class="relative">
+            <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400">
+              <i class="fa-solid fa-envelope text-xs"></i>
+            </span>
+            <input type="email" id="loginEmail" placeholder="71234567@continental.edu.pe" class="w-full pl-9 pr-3 py-2.5 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-uc-purple focus:border-uc-purple outline-none transition" required>
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold text-slate-700 mb-1.5">Contraseña</label>
+          <div class="relative">
+            <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400">
+              <i class="fa-solid fa-lock text-xs"></i>
+            </span>
+            <input type="password" id="loginPassword" value="••••••••••••" class="w-full pl-9 pr-3 py-2.5 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-uc-purple focus:border-uc-purple outline-none transition" required>
+          </div>
+        </div>
+
+        <button type="submit" class="w-full py-3 bg-uc-purple hover:bg-uc-darkPurple text-white font-bold text-xs rounded-xl shadow-md hover:shadow-lg transition flex items-center justify-center gap-2">
+          <span>Ingresar al Sistema de Espacios</span>
+          <i class="fa-solid fa-arrow-right"></i>
+        </button>
+
+        <div class="pt-4 mt-4 border-t border-slate-200">
+          <div class="bg-amber-50/90 border border-amber-200 rounded-2xl p-3.5">
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-[11px] font-extrabold text-amber-900 uppercase tracking-wide flex items-center gap-1.5">
+                <i class="fa-solid fa-flask text-amber-600"></i> Selector de Perfil (Modo Pruebas)
+              </span>
+            </div>
+
+            <div class="grid grid-cols-2 gap-2 mb-2.5">
+              <button type="button" id="loginBtnArq" onclick="selectLoginProfile('ARQ')" class="py-2 px-2.5 rounded-xl text-xs font-bold border-2 border-uc-purple bg-purple-100 text-uc-darkPurple shadow-sm transition flex items-center justify-center gap-1.5">
+                🎓 Arquitectura
+              </button>
+              <button type="button" id="loginBtnGen" onclick="selectLoginProfile('GEN')" class="py-2 px-2.5 rounded-xl text-xs font-semibold border border-slate-300 bg-white text-slate-600 hover:bg-slate-50 transition flex items-center justify-center gap-1.5">
+                👤 General
+              </button>
+            </div>
+
+            <p class="text-[10px] leading-relaxed text-amber-800 bg-white/70 p-2 rounded-lg border border-amber-200/70">
+              <i class="fa-solid fa-circle-info text-amber-600 mr-1"></i>
+              <strong>Nota de prototipo:</strong> Esta opción <u>no estará en el resultado final</u>; se incluye solo para pruebas.
+            </p>
+          </div>
+        </div>
+      </form>
+
+    </div>
+  </div>
+
+  <!-- ==================== APLICACIÓN PRINCIPAL ==================== -->
+  <div id="mainApp" class="hidden min-h-screen flex flex-col">
+
+    <!-- HEADER INSTITUCIONAL UC -->
+    <header class="bg-uc-purple text-white shadow-md sticky top-0 z-50 px-6 py-3 flex flex-wrap items-center justify-between gap-4">
+      <div class="flex items-center space-x-3">
+        <div class="bg-white text-uc-purple font-extrabold text-xl tracking-wider flex items-center justify-center w-10 h-10 rounded-xl shadow border border-purple-200">
+          UC
+        </div>
+        <div>
+          <h1 class="font-extrabold text-base sm:text-lg leading-tight">RESERVA DE ESPACIOS DE ESTUDIO UC (HUANCAYO)</h1>
+          <p class="text-xs text-uc-lightPurple font-medium">Campus Huancayo • Pabellón de Arquitectura e Ingenierías</p>
+        </div>
+      </div>
+      
+      <div class="flex flex-wrap items-center gap-2.5">
+        <div class="flex items-center gap-2 bg-uc-darkPurple/70 px-3 py-1.5 rounded-xl border border-white/15 text-xs">
+          <i class="fa-solid fa-id-badge text-amber-400"></i>
+          <span id="loggedStudentEmail" class="text-purple-100 font-medium">estudiante@continental.edu.pe</span>
+          <span class="text-white/30">|</span>
+          <span id="loggedProfileTag" class="font-bold text-amber-300">🎓 Arquitectura</span>
+        </div>
+
+        <button onclick="logout()" title="Cerrar Sesión" class="bg-white/10 hover:bg-rose-600 text-white px-3 py-2 rounded-xl text-xs font-semibold transition flex items-center gap-1.5 border border-white/15">
+          <i class="fa-solid fa-right-from-bracket"></i>
+          <span>Salir</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- FILTROS PRINCIPALES Y FECHA/HORA -->
+    <section id="filtersSection" class="bg-white border-b border-slate-200 px-6 py-3 flex flex-wrap items-center justify-between gap-4 text-xs sm:text-sm shadow-sm transition-opacity">
+      <div class="flex flex-wrap items-center gap-3">
+        
+        <div class="flex items-center space-x-2 bg-slate-50 p-1.5 rounded-lg border border-slate-300">
+          <span class="text-slate-500 font-semibold pl-1"><i data-lucide="calendar" class="w-3.5 h-3.5 text-uc-purple inline mr-1"></i> Fecha:</span>
+          <input type="date" id="reservationDateInput" onchange="onDateChanged()" class="bg-white border border-slate-300 rounded-md px-2.5 py-1 text-xs font-extrabold text-uc-purple focus:ring-2 focus:ring-uc-purple outline-none cursor-pointer">
+        </div>
+
+        <div class="flex items-center space-x-1.5">
+          <label class="font-semibold text-slate-500">Hora inicio:</label>
+          <select id="timeFilter" onchange="updateHeaderTimeDisplay()" class="border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs bg-amber-50 font-bold text-amber-900 focus:ring-2 focus:ring-uc-purple outline-none">
+            <option value="8.0">08:00 AM</option>
+            <option value="9.0">09:00 AM</option>
+            <option value="10.5" selected>10:30 AM</option>
+            <option value="12.0">12:00 PM</option>
+            <option value="14.0">02:00 PM</option>
+            <option value="15.5">03:30 PM</option>
+            <option value="17.0">05:00 PM (Tarde)</option>
+            <option value="18.5">06:30 PM (Noche)</option>
+            <option value="20.0">08:00 PM (Noche)</option>
+          </select>
+        </div>
+
+        <div class="flex items-center space-x-1.5">
+          <label class="font-semibold text-slate-500">Recurso:</label>
+          <select id="resourceFilter" onchange="applyFilters()" class="border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs bg-white focus:ring-2 focus:ring-uc-purple outline-none font-medium">
+            <option value="ALL">Mostrar Todos los Espacios</option>
+            <option value="CUBICULO_LAPTOP">Cúbiculos con Laptop</option>
+            <option value="CUBICULO_PC">Cúbiculos con PC (GPU Render)</option>
+            <option value="GRUPAL">Salas de estudio grupales</option>
+            <option value="MAQUETA">Mesas de Maquetación Taller ARQ</option>
+          </select>
+        </div>
+
+        <div class="flex items-center space-x-1.5">
+          <label class="font-semibold text-slate-500">Personas:</label>
+          <select id="capacityFilter" onchange="applyFilters()" class="border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs bg-white focus:ring-2 focus:ring-uc-purple outline-none font-bold text-uc-purple">
+            <option value="1">1 Persona (Solo cúbiculos)</option>
+            <option value="2-4">2 - 4 Personas (Salas / Maquetas)</option>
+            <option value="5-8">5 - 8 Personas (Salas / Maquetas)</option>
+          </select>
+        </div>
+
+      </div>
+
+      <div id="badgePriority" class="bg-amber-50 border border-amber-300 text-amber-900 px-3 py-1.5 rounded-full text-xs font-bold flex items-center gap-1.5 shadow-sm">
+        <i data-lucide="sparkles" class="w-4 h-4 text-amber-600"></i>
+        <span>Prioridad ARQ: Bloques extendidos (hasta 12h) y Renders Prioritarios</span>
+      </div>
+    </section>
+
+    <!-- CONTENEDOR PRINCIPAL -->
+    <main class="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 flex flex-col lg:flex-row gap-5 overflow-hidden">
+
+      <aside id="floorsSidebar" class="w-full lg:w-48 bg-white rounded-2xl border border-slate-200 shadow-sm p-3.5 flex flex-col gap-3 shrink-0 transition-opacity">
+        <h2 class="text-[11px] font-extrabold text-slate-400 uppercase tracking-wider">SELECCIÓN DE ESPACIO</h2>
+        
+        <div class="flex lg:flex-col gap-2 overflow-x-auto lg:overflow-y-auto pr-1">
+          <button id="btnFloor1" onclick="switchFloor(1)" class="border-2 border-uc-purple bg-purple-50/60 rounded-xl p-2.5 text-left transition shrink-0 w-40 lg:w-full">
+            <div class="w-full h-12 bg-slate-200 rounded-lg border border-slate-300 mb-1.5 flex items-center justify-center p-1">
+              <span class="text-[10px] font-bold text-slate-600">[Piso 1 - Taller]</span>
+            </div>
+            <span class="text-xs font-bold text-uc-purple block leading-tight">Piso 1: Taller ARQ / Render</span>
+            <span class="text-[10px] text-slate-500">22 módulos activos</span>
+          </button>
+
+          <button id="btnFloor2" onclick="switchFloor(2)" class="border border-slate-200 rounded-xl p-2.5 text-left transition hover:border-slate-300 opacity-70 shrink-0 w-36 lg:w-full">
+            <div class="w-full h-12 bg-slate-100 rounded-lg border border-slate-200 mb-1 flex items-center justify-center">
+              <span class="text-[10px] font-bold text-slate-400">[Piso 2 - Cubículos]</span>
+            </div>
+            <span class="text-xs font-semibold text-slate-700 block">Piso 2: Cúbiculos Silent</span>
+            <span class="text-[10px] text-slate-400">18 espacios</span>
+          </button>
+
+          <button id="btnFloor3" onclick="switchFloor(3)" class="border border-slate-200 rounded-xl p-2.5 text-left transition hover:border-slate-300 opacity-70 shrink-0 w-36 lg:w-full">
+            <div class="w-full h-12 bg-slate-100 rounded-lg border border-slate-200 mb-1 flex items-center justify-center">
+              <span class="text-[10px] font-bold text-slate-400">[Piso 3 - CAD]</span>
+            </div>
+            <span class="text-xs font-semibold text-slate-700 block">Piso 3: Mediateca CAD</span>
+            <span class="text-[10px] text-slate-400">15 estaciones</span>
+          </button>
+        </div>
+      </aside>
+
+      <div class="flex-1 bg-white rounded-2xl border border-slate-200 shadow-sm p-4 flex flex-col justify-between relative overflow-hidden">
+        
+        <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
+          <div class="flex items-center gap-2">
+            <span id="lblFloorTitle" class="text-xs font-bold text-slate-700">Piso 1 • Taller de Arquitectura y Módulos Render</span>
+            <span id="mapLockedBadge" class="hidden bg-amber-100 text-amber-800 border border-amber-300 text-[10px] font-extrabold px-2 py-0.5 rounded-full flex items-center gap-1">
+              <i class="fa-solid fa-lock text-[9px]"></i> Selección bloqueada (Reserva activa)
+            </span>
+          </div>
+          <div class="text-xs bg-purple-50 border border-purple-200 px-3 py-1 rounded-lg text-uc-purple font-extrabold shadow-sm flex items-center gap-1.5">
+            <i class="fa-solid fa-calendar-days"></i>
+            <span>Fecha: <strong id="lblHeaderDate">23/10/2026</strong></span>
+            <span class="mx-1">•</span>
+            <span>Horario: <strong id="lblHeaderTime">10:30 - 14:30</strong></span>
+          </div>
+        </div>
+
+        <div id="mapContainer" class="w-full h-[435px] border border-slate-200 rounded-xl bg-slate-50 relative flex items-center justify-center p-2 overflow-auto shadow-inner">
+          <svg viewBox="0 0 950 460" class="w-full h-full max-h-[420px]" id="svgMap">
+            <!-- Renderizado dinámico vía JavaScript -->
+          </svg>
+        </div>
+
+      </div>
+
+      <div class="w-full lg:w-80 bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between gap-4">
+        
+        <div>
+          <div class="border-b border-slate-100 pb-3 mb-3">
+            <h2 class="text-sm font-extrabold text-slate-800 flex items-center gap-2">
+              <i class="fa-solid fa-sliders text-uc-purple"></i> Panel de Gestión
+            </h2>
+            <p class="text-[11px] text-slate-500">Selecciona 1 espacio para habilitar las acciones.</p>
+          </div>
+
+          <div id="detailsCard" class="bg-slate-50 p-3.5 rounded-xl border border-slate-200 mb-3 text-xs">
+            <div class="text-center py-6 text-slate-400">
+              <i class="fa-solid fa-hand-pointer text-2xl mb-2 text-slate-300"></i>
+              <p class="text-[11px]">Haz clic en cualquier mesa o cúbículo del plano para inspeccionar sus especificaciones y estado.</p>
+            </div>
+          </div>
+
+          <div id="statusAlert" class="hidden p-3 rounded-xl text-xs font-semibold mb-3 flex items-start gap-2"></div>
+
+          <!-- Ticket QR Digital -->
+          <div id="qrTicketBox" class="hidden bg-slate-900 text-white p-4 rounded-xl border border-slate-800 mb-3 text-center shadow-lg">
+            <span class="text-[10px] uppercase font-bold text-uc-lightPurple tracking-wider block mb-1">Pase Digital de Reserva UC</span>
+            <div class="bg-white p-2.5 rounded-lg my-1 inline-block shadow">
+              <svg class="w-24 h-24 mx-auto" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M0 0h35v35H0zM10 10h15v15H10zM65 0h35v35H65zM75 10h15v15H75zM0 65h35v35H0zM10 75h15v15H10z" fill="#3B1B61"/>
+                <path d="M40 5h10v10H40zM50 20h10v15H50zM20 40h15v10H20zM40 40h20v20H40zM65 45h10v10H65zM80 40h15v10H80z" fill="#532885"/>
+                <path d="M45 65h10v15H45zM60 65h15v10H60zM80 65h10v20H80zM65 80h10v15H65zM40 85h20v10H40z" fill="#3B1B61"/>
+              </svg>
+            </div>
+            <p class="text-xs font-mono text-slate-300">CÓDIGO: <span id="qrCodeText" class="text-amber-400 font-bold">UC-ARQ-8942</span></p>
+            <p id="ticketDateSummary" class="text-[11px] text-amber-200 mt-1 font-bold">Fecha: 23/10/2026</p>
+            <p id="ticketDurationSummary" class="text-[11px] text-amber-300 mt-0.5 font-semibold">Duración: 4 Horas (10:30 - 14:30)</p>
+            <p class="text-[10px] text-slate-400 mt-1">Escanea este QR en la mesa para hacer Check-in.</p>
+          </div>
+        </div>
+
+        <div id="actionControls" class="space-y-2 pt-2 border-t border-slate-100">
+          <button id="btnConfirm" onclick="openConfirmModal()" disabled class="w-full py-2.5 px-4 bg-slate-200 text-slate-400 rounded-xl font-bold text-xs transition flex items-center justify-center gap-2 cursor-not-allowed">
+            <i class="fa-solid fa-calendar-check"></i> 1. Confirmar Reserva
+          </button>
+          
+          <button id="btnQR" onclick="simulateQRCheckIn()" disabled class="w-full py-2 px-4 bg-slate-200 text-slate-400 border border-slate-200 rounded-xl font-semibold text-xs transition flex items-center justify-center gap-2 cursor-not-allowed">
+            <i class="fa-solid fa-qrcode"></i> 2. Simular Check-in por QR
+          </button>
+
+          <button id="btnExtend" onclick="extendRenderSession()" disabled class="w-full py-2 px-4 bg-slate-200 text-slate-400 border border-slate-200 rounded-xl font-semibold text-xs transition flex items-center justify-center gap-2 cursor-not-allowed" title="Función exclusiva para estudiantes de Arquitectura">
+            <i class="fa-solid fa-clock-rotate-left"></i> 3. Extender Render (+2h)
+          </button>
+
+          <button id="btnRelease" onclick="releaseSpace()" disabled class="w-full py-2 px-4 bg-slate-200 text-slate-400 rounded-xl font-semibold text-xs transition flex items-center justify-center gap-2 cursor-not-allowed">
+            <i class="fa-solid fa-door-open"></i> Finalizar / Liberar Espacio
+          </button>
+        </div>
+
+      </div>
+
+    </main>
+
+    <section class="bg-white border-t px-6 py-2 flex flex-wrap items-center justify-between text-xs gap-4 shadow-inner">
+      <div class="flex items-center space-x-6">
+        <span class="font-extrabold text-slate-700">LEYENDA DE ESTADOS:</span>
+        <div class="flex items-center space-x-1.5"><span class="w-3.5 h-3.5 bg-slate-200 border border-slate-400 rounded-sm"></span><span>Disponible (Gris)</span></div>
+        <div class="flex items-center space-x-1.5"><span class="w-3.5 h-3.5 bg-blue-600 rounded-sm"></span><span class="font-bold text-blue-700">Seleccionada (Azul)</span></div>
+        <div class="flex items-center space-x-1.5"><span class="w-3.5 h-3.5 bg-red-600 rounded-sm"></span><span class="font-bold text-red-600">Ocupada / En Render (Rojo)</span></div>
+        <div class="flex items-center space-x-1.5"><span class="w-3.5 h-3.5 bg-emerald-500 rounded-sm"></span><span class="font-bold text-emerald-700">Check-in Verificado (Verde)</span></div>
+      </div>
+
+      <div class="flex items-center space-x-5">
+        <span class="font-bold text-slate-700">RECURSOS:</span>
+        <span class="flex items-center gap-1"><i data-lucide="laptop" class="w-3.5 h-3.5"></i> Laptop</span>
+        <span class="flex items-center gap-1"><i data-lucide="monitor" class="w-3.5 h-3.5"></i> PC GPU (ARQ)</span>
+        <span class="flex items-center gap-1"><i data-lucide="scissors" class="w-3.5 h-3.5"></i> Mesa Maquetado</span>
+        <span class="flex items-center gap-1"><i data-lucide="coffee" class="w-3.5 h-3.5"></i> Kitchenette / Microondas</span>
+      </div>
+    </section>
+
+    <footer class="bg-slate-900 text-white p-4 flex flex-wrap items-center justify-between gap-4 border-t">
+      <div>
+        <h3 class="text-xs text-slate-400 uppercase tracking-wider font-extrabold mb-1">Espacio Seleccionado / Reservado:</h3>
+        <div id="selectedListSummary" class="text-xs font-medium flex flex-wrap items-center gap-2">
+          <span class="text-slate-400 text-xs italic">Ningún espacio seleccionado por el momento</span>
+        </div>
+      </div>
+
+      <div class="flex items-center space-x-3">
+        <button id="footerBtnCancel" onclick="clearSelections()" class="px-4 py-2 border border-slate-700 hover:bg-slate-800 text-slate-300 rounded-lg text-xs font-semibold transition">
+          Cancelar selección
+        </button>
+        <button id="footerBtnConfirm" onclick="openConfirmModal()" disabled class="px-6 py-2 bg-slate-700 text-slate-400 rounded-lg font-bold text-xs shadow-lg transition flex items-center gap-2 cursor-not-allowed">
+          <i data-lucide="check-circle-2" class="w-4 h-4"></i> Confirmar reserva
+        </button>
+      </div>
+    </footer>
+
+  </div>
+
+  <!-- MODAL: FICHA TÉCNICA -->
+  <div id="modalSpaceDetails" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl shadow-2xl max-w-lg w-full overflow-hidden border">
+      
+      <div class="bg-uc-purple text-white p-4 flex items-center justify-between">
+        <div class="flex items-center space-x-2">
+          <i data-lucide="info" class="w-5 h-5 text-amber-400"></i>
+          <h3 id="modalSpaceTitle" class="font-extrabold text-base sm:text-lg">Ficha Técnica del Espacio</h3>
+        </div>
+        <button onclick="closeModal('modalSpaceDetails')" class="text-purple-200 hover:text-white"><i data-lucide="x" class="w-5 h-5"></i></button>
+      </div>
+
+      <div class="p-5 space-y-3.5 text-xs text-slate-700 max-h-[70vh] overflow-y-auto">
+        <div class="flex items-center justify-between bg-slate-50 p-2.5 rounded-lg border">
+          <span class="font-bold text-slate-500 uppercase">Estado actual:</span>
+          <span id="modalSpaceStatus" class="px-2.5 py-0.5 rounded-full font-bold">Disponible</span>
+        </div>
+
+        <div id="modalOccupiedTimeBox" class="hidden bg-rose-50 border border-rose-200 p-2.5 rounded-lg text-rose-900 font-semibold flex items-center gap-2">
+          <i class="fa-solid fa-clock text-rose-600 text-sm"></i>
+          <span>Ocupado por proceso de Render. Liberación estimada: <strong id="modalOccupiedUntilText" class="text-rose-700 underline">15:30 h</strong></span>
+        </div>
+
+        <div class="border-b pb-2.5">
+          <h4 class="font-bold text-slate-900 flex items-center gap-1.5 mb-1 text-xs">
+            <i data-lucide="ruler" class="w-4 h-4 text-uc-purple"></i> Dimensiones y Medidas de la Mesa
+          </h4>
+          <p id="modalSpaceMeasures" class="text-slate-600">Escritorio individual reforzado de 180 cm × 90 cm.</p>
+        </div>
+
+        <div class="border-b pb-2.5">
+          <h4 class="font-bold text-slate-900 flex items-center gap-1.5 mb-1 text-xs">
+            <i data-lucide="cpu" class="w-4 h-4 text-uc-purple"></i> Especificaciones de Hardware (PC / Laptop)
+          </h4>
+          <p id="modalSpaceHardware" class="text-slate-600">PC Workstation Intel i9, GPU RTX 4080 16GB, 64GB RAM DDR5.</p>
+        </div>
+
+        <div class="border-b pb-2.5">
+          <h4 class="font-bold text-slate-900 flex items-center gap-1.5 mb-1 text-xs">
+            <i data-lucide="scissors" class="w-4 h-4 text-uc-purple"></i> Herramientas de Maquetado y Dibujo
+          </h4>
+          <p id="modalSpaceTools" class="text-slate-600">Incluye Mat de corte A2 autorreparable, Regla T de aluminio 80cm.</p>
+        </div>
+
+        <div>
+          <h4 class="font-bold text-slate-900 flex items-center gap-1.5 mb-1 text-xs">
+            <i data-lucide="coffee" class="w-4 h-4 text-uc-purple"></i> Servicios & Amenidades Cercanas
+          </h4>
+          <ul id="modalSpaceAmenities" class="list-disc list-inside text-slate-600 space-y-1">
+            <li>Kitchenette a 8m: Microondas, Hervidora eléctrica de agua caliente.</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="bg-slate-50 p-3.5 border-t flex items-center justify-between">
+        <span class="text-[11px] text-slate-500 font-medium">Prioridad Estudiantes UC</span>
+        <div class="flex space-x-2">
+          <button onclick="closeModal('modalSpaceDetails')" class="px-4 py-2 border rounded-lg text-slate-600 font-semibold hover:bg-slate-100">
+            Cerrar
+          </button>
+          <button id="btnModalToggleSelect" onclick="toggleSelectFromModal()" class="px-4 py-2 bg-uc-purple text-white rounded-lg font-bold hover:bg-purple-900 transition">
+            Seleccionar espacio
+          </button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- MODAL: PANEL DE CONFIRMACIÓN CON LISTA DESPLEGABLE DE DURACIÓN (1 A 12 HORAS) -->
+  <div id="modalConfirmReservation" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[90] hidden flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden border animate-in fade-in zoom-in duration-200">
+      
+      <div class="bg-uc-purple text-white p-4 flex items-center justify-between">
+        <div class="flex items-center space-x-2">
+          <i data-lucide="calendar-check" class="w-5 h-5 text-amber-400"></i>
+          <h3 class="font-extrabold text-base">Confirmar Reserva de Espacio</h3>
+        </div>
+        <button onclick="closeModal('modalConfirmReservation')" class="text-purple-200 hover:text-white"><i data-lucide="x" class="w-5 h-5"></i></button>
+      </div>
+
+      <div class="p-5 space-y-4 text-xs text-slate-700">
+        <div class="bg-purple-50 border border-purple-200 p-3 rounded-xl space-y-1">
+          <div>
+            <span class="text-[10px] font-bold text-uc-purple uppercase">Espacio:</span>
+            <span id="modalConfirmSpaceName" class="font-extrabold text-sm text-slate-900 block">CUB-101</span>
+          </div>
+          <div>
+            <span class="text-[10px] font-bold text-uc-purple uppercase">Fecha inicial:</span>
+            <span id="modalConfirmDateText" class="font-bold text-slate-800">23/10/2026</span>
+          </div>
+        </div>
+
+        <div>
+          <label class="block font-bold text-slate-700 mb-1.5 flex items-center gap-1.5">
+            <i data-lucide="phone" class="w-3.5 h-3.5 text-uc-purple"></i> Número de Celular (Para notificaciones SMS/WhatsApp de tu QR)
+          </label>
+          <input type="tel" id="inputUserPhone" placeholder="987654321" maxlength="9" class="w-full px-3 py-2 border border-slate-300 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-uc-purple outline-none" required>
+        </div>
+
+        <div>
+          <label class="block font-bold text-slate-700 mb-1.5 flex items-center gap-1.5">
+            <i data-lucide="clock" class="w-3.5 h-3.5 text-uc-purple"></i> Duración del Bloque de Estudio
+          </label>
+          
+          <!-- Lista desplegable (Select) de 1 a 12 horas -->
+          <select id="modalDurationSelect" onchange="onDurationChanged()" class="w-full border border-slate-300 rounded-xl px-3 py-2.5 text-xs bg-purple-50/50 font-bold text-uc-purple focus:ring-2 focus:ring-uc-purple outline-none">
+            <option value="1">1 Hora</option>
+            <option value="2" selected>2 Horas</option>
+            <option value="3">3 Horas</option>
+            <option value="4">4 Horas</option>
+            <option value="5">5 Horas</option>
+            <option value="6">6 Horas</option>
+            <option value="7">7 Horas</option>
+            <option value="8">8 Horas</option>
+            <option value="9">9 Horas</option>
+            <option value="10">10 Horas</option>
+            <option value="11">11 Horas</option>
+            <option value="12">12 Horas (Máximo Arquitectura)</option>
+          </select>
+
+          <div class="bg-slate-50 p-2.5 rounded-xl border flex justify-between text-[11px] text-slate-600 font-semibold mt-2">
+            <span>Inicio: <strong id="modalStartTimeText" class="text-slate-800">10:30 h</strong></span>
+            <span>Fin estimado: <strong id="modalEndTimeText" class="text-uc-purple font-extrabold">12:30 h</strong></span>
+          </div>
+          <span id="modalDurationHint" class="text-[10px] text-emerald-600 font-bold block mt-1.5">✨ Prioridad ARQ: Bloques extendidos disponibles (hasta 12h)</span>
+        </div>
+      </div>
+
+      <div class="bg-slate-50 p-3.5 border-t flex items-center justify-end space-x-2">
+        <button onclick="closeModal('modalConfirmReservation')" class="px-4 py-2 border rounded-lg text-slate-600 font-semibold hover:bg-slate-100">
+          Cancelar
+        </button>
+        <button onclick="submitFinalReservation()" class="px-5 py-2 bg-uc-purple hover:bg-purple-900 text-white rounded-lg font-bold transition flex items-center gap-1.5 shadow">
+          <i data-lucide="check" class="w-4 h-4"></i> Generar Pase y Confirmar
+        </button>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- JAVASCRIPT -->
+  <script>
+    let currentProfile = 'ARQ';
+    let selectedLoginProfile = 'ARQ';
+    let currentFloor = 1;
+    let inspectedSpaceId = null;
+    let hasActiveReservation = false;
+    let confirmedDurationHours = 2;
+    let selectedReservationDate = '';
+
+    function initDefaultDate() {
+      const today = new Date();
+      const yyyy = today.getFullYear();
+      const mm = String(today.getMonth() + 1).padStart(2, '0');
+      const dd = String(today.getDate()).padStart(2, '0');
+      selectedReservationDate = `${yyyy}-${mm}-${dd}`;
+      
+      const dateInput = document.getElementById('reservationDateInput');
+      if (dateInput) {
+        dateInput.value = selectedReservationDate;
+      }
+      updateHeaderDateDisplay();
+    }
+
+    function onDateChanged() {
+      const dateInput = document.getElementById('reservationDateInput');
+      if (dateInput && dateInput.value) {
+        selectedReservationDate = dateInput.value;
+        updateHeaderDateDisplay();
+        showAlert(`Fecha de reserva actualizada al ${formatDateDisplay(selectedReservationDate)}.`, 'slate');
+      }
+    }
+
+    function formatDateDisplay(dateStr) {
+      if (!dateStr) return '';
+      const parts = dateStr.split('-');
+      if (parts.length === 3) {
+        return `${parts[2]}/${parts[1]}/${parts[0]}`;
+      }
+      return dateStr;
+    }
+
+    function updateHeaderDateDisplay() {
+      document.getElementById('lblHeaderDate').innerText = formatDateDisplay(selectedReservationDate);
+    }
+
+    function calculateEndDateTime(baseDateStr, startHour, durationHours) {
+      const totalEndHours = startHour + durationHours;
+      const extraDays = Math.floor(totalEndHours / 24);
+      const normalizedEndHour = totalEndHours % 24;
+
+      const hrs = Math.floor(normalizedEndHour);
+      const mins = (normalizedEndHour % 1 === 0) ? '00' : '30';
+      const timeStr = `${hrs < 10 ? '0' + hrs : hrs}:${mins} h`;
+
+      if (extraDays > 0 && baseDateStr) {
+        const [y, m, d] = baseDateStr.split('-').map(Number);
+        const baseDate = new Date(y, m - 1, d);
+        baseDate.setDate(baseDate.getDate() + extraDays);
+
+        const ny = baseDate.getFullYear();
+        const nm = String(baseDate.getMonth() + 1).padStart(2, '0');
+        const nd = String(baseDate.getDate()).padStart(2, '0');
+        const nextDateFormatted = `${nd}/${nm}/${ny}`;
+
+        return {
+          timeText: `${timeStr} (Próx. día)`,
+          fullText: `${nextDateFormatted} a las ${timeStr}`,
+          nextDateStr: `${nd}/${nm}/${ny}`
+        };
+      }
+
+      return {
+        timeText: timeStr,
+        fullText: `${formatDateDisplay(baseDateStr)} a las ${timeStr}`,
+        nextDateStr: formatDateDisplay(baseDateStr)
+      };
+    }
+
+    function selectLoginProfile(profile) {
+      selectedLoginProfile = profile;
+      const btnArq = document.getElementById('loginBtnArq');
+      const btnGen = document.getElementById('loginBtnGen');
+
+      if (profile === 'ARQ') {
+        btnArq.className = "py-2 px-2.5 rounded-xl text-xs font-bold border-2 border-uc-purple bg-purple-100 text-uc-darkPurple shadow-sm transition flex items-center justify-center gap-1.5";
+        btnGen.className = "py-2 px-2.5 rounded-xl text-xs font-semibold border border-slate-300 bg-white text-slate-600 hover:bg-slate-50 transition flex items-center justify-center gap-1.5";
+      } else {
+        btnGen.className = "py-2 px-2.5 rounded-xl text-xs font-bold border-2 border-uc-purple bg-purple-100 text-uc-darkPurple shadow-sm transition flex items-center justify-center gap-1.5";
+        btnArq.className = "py-2 px-2.5 rounded-xl text-xs font-semibold border border-slate-300 bg-white text-slate-600 hover:bg-slate-50 transition flex items-center justify-center gap-1.5";
+      }
+    }
+
+    function handleLogin(e) {
+      e.preventDefault();
+      const emailInput = document.getElementById('loginEmail').value.trim();
+      const emailDisplay = emailInput || (selectedLoginProfile === 'ARQ' ? 'arq.estudiante@continental.edu.pe' : 'estudiante@continental.edu.pe');
+      
+      document.getElementById('loggedStudentEmail').innerText = emailDisplay;
+      applyProfileRules(selectedLoginProfile);
+
+      document.getElementById('loginScreen').classList.add('hidden');
+      document.getElementById('mainApp').classList.remove('hidden');
+      lucide.createIcons();
+
+      // <--- VALIDACIÓN AUTOMÁTICA DEL QR FÍSICO AL ENTRAR CON PARÁMETRO --->
+      checkUrlQrParam();
+    }
+
+    function logout() {
+      hasActiveReservation = false;
+      setReservationLockState(false);
+      document.querySelectorAll('.node-checked, .node-sel').forEach(n => {
+        n.classList.remove('node-checked', 'node-sel');
+        n.classList.add('node-disp');
+      });
+      resetActionButtons();
+      updateManagementPanel();
+      document.getElementById('qrTicketBox').classList.add('hidden');
+      document.getElementById('statusAlert').classList.add('hidden');
+      document.getElementById('mainApp').classList.add('hidden');
+      document.getElementById('loginScreen').classList.remove('hidden');
+    }
+
+    function setReservationLockState(locked) {
+      hasActiveReservation = locked;
+      const mapContainer = document.getElementById('mapContainer');
+      const mapLockedBadge = document.getElementById('mapLockedBadge');
+      const filtersSection = document.getElementById('filtersSection');
+      const floorsSidebar = document.getElementById('floorsSidebar');
+      const footerBtnCancel = document.getElementById('footerBtnCancel');
+
+      const interactiveInputs = [
+        document.getElementById('reservationDateInput'),
+        document.getElementById('timeFilter'),
+        document.getElementById('resourceFilter'),
+        document.getElementById('capacityFilter'),
+        document.getElementById('btnFloor1'),
+        document.getElementById('btnFloor2'),
+        document.getElementById('btnFloor3')
+      ];
+
+      if (locked) {
+        mapContainer.classList.add('map-locked');
+        mapLockedBadge.classList.remove('hidden');
+        filtersSection.classList.add('opacity-60', 'pointer-events-none');
+        floorsSidebar.classList.add('opacity-60', 'pointer-events-none');
+        
+        footerBtnCancel.disabled = true;
+        footerBtnCancel.className = "px-4 py-2 border border-slate-800 text-slate-600 rounded-lg text-xs font-semibold cursor-not-allowed";
+        
+        interactiveInputs.forEach(el => { if (el) el.disabled = true; });
+      } else {
+        mapContainer.classList.remove('map-locked');
+        mapLockedBadge.classList.add('hidden');
+        filtersSection.classList.remove('opacity-60', 'pointer-events-none');
+        floorsSidebar.classList.remove('opacity-60', 'pointer-events-none');
+        
+        footerBtnCancel.disabled = false;
+        footerBtnCancel.className = "px-4 py-2 border border-slate-700 hover:bg-slate-800 text-slate-300 rounded-lg text-xs font-semibold transition cursor-pointer";
+        
+        interactiveInputs.forEach(el => { if (el) el.disabled = false; });
+      }
+    }
+
+    const spacesDB = {
+      'c14': { code: 'CUB-101', name: 'Cúbiculo CUB-101 (Laptop)', type: 'CUBICULO_LAPTOP', floor: 1, measures: 'Mesa ergonómica 140x80cm', hw: 'Módulo libre para Laptop (Tomacorriente dobles + Dock USB-C 100W)', tools: 'Silla lumbar, lámpara regulable', amen: 'Microondas a 8m, hervidora de agua', occupiedUntil: '14:30 h' },
+      'top1': { code: 'LAP-101', name: 'Laptop Workstation LAP-101', type: 'CUBICULO_LAPTOP', floor: 1, measures: 'Desk 120x75cm', hw: 'Para Laptop personal + Conexión Red Gigabit LAN', tools: 'Soporte elevado', amen: 'Microondas en pasillo', occupiedUntil: '12:00 h' },
+      'top2': { code: 'LAP-102', name: 'Laptop Workstation LAP-102', type: 'CUBICULO_LAPTOP', floor: 1, measures: 'Desk 120x75cm', hw: 'Para Laptop personal + Conexión Red Gigabit LAN', tools: 'Soporte elevado', amen: 'Microondas en pasillo' },
+      'top3': { code: 'LAP-103', name: 'Laptop Workstation LAP-103', type: 'CUBICULO_LAPTOP', floor: 1, measures: 'Desk 120x75cm', hw: 'Para Laptop personal + Conexión Red Gigabit LAN', tools: 'Soporte elevado', amen: 'Microondas en pasillo', occupiedUntil: '16:00 h' },
+      'top4': { code: 'LAP-104', name: 'Laptop Workstation LAP-104', type: 'CUBICULO_LAPTOP', floor: 1, measures: 'Desk 120x75cm', hw: 'Para Laptop personal + Conexión Red Gigabit LAN', tools: 'Soporte elevado', amen: 'Microondas en pasillo', occupiedUntil: '15:30 h' },
+      'top5': { code: 'LAP-105', name: 'Laptop Workstation LAP-105', type: 'CUBICULO_LAPTOP', floor: 1, measures: 'Desk 120x75cm', hw: 'Para Laptop personal + Conexión Red Gigabit LAN', tools: 'Soporte elevado', amen: 'Microondas en pasillo', occupiedUntil: '17:00 h' },
+      'mid1': { code: 'CUB-102', name: 'Cúbiculo CUB-102 (Silent)', type: 'CUBICULO_LAPTOP', floor: 1, measures: '130x75cm aislante acústico', hw: 'Tomacorriente rápido USB-C 65W', tools: 'Luz cálida entintado', amen: 'Kitchenette a 10m', occupiedUntil: '13:30 h' },
+      'mid2': { code: 'CUB-103', name: 'Cúbiculo CUB-103 (Silent)', type: 'CUBICULO_LAPTOP', floor: 1, measures: '130x75cm aislante acústico', hw: 'Tomacorriente rápido USB-C 65W', tools: 'Luz cálida entintado', amen: 'Kitchenette a 10m', occupiedUntil: '14:00 h' },
+      'mid3': { code: 'CUB-104', name: 'Cúbiculo CUB-104 (Silent)', type: 'CUBICULO_LAPTOP', floor: 1, measures: '130x75cm aislante acústico', hw: 'Tomacorriente rápido USB-C 65W', tools: 'Luz cálida entintado', amen: 'Kitchenette a 10m', occupiedUntil: '18:00 h' },
+      'mid4': { code: 'CUB-105', name: 'Cúbiculo CUB-105 (Silent)', type: 'CUBICULO_LAPTOP', floor: 1, measures: '130x75cm aislante acústico', hw: 'Tomacorriente rápido USB-C 65W', tools: 'Luz cálida entintado', amen: 'Kitchenette a 10m' },
+      'mid5': { code: 'CUB-106', name: 'Cúbiculo CUB-106 (Silent)', type: 'CUBICULO_LAPTOP', floor: 1, measures: '130x75cm aislante acústico', hw: 'Tomacorriente rápido USB-C 65W', tools: 'Luz cálida entintado', amen: 'Kitchenette a 10m', occupiedUntil: '15:00 h' },
+      
+      'bot1': { code: 'PC-101', name: 'Módulo Render PC-101 (ARQ)', type: 'CUBICULO_PC', floor: 1, measures: '180x90cm reforzada', hw: 'Intel i9-13900K, GPU RTX 4080 16GB, 64GB RAM DDR5', tools: 'Mat corte A2, Regla T 80cm', amen: 'Kitchenette con Microondas', occupiedUntil: '19:30 h' },
+      'bot2': { code: 'PC-102', name: 'Módulo Render PC-102 (ARQ)', type: 'CUBICULO_PC', floor: 1, measures: '180x90cm reforzada', hw: 'Intel i9-13900K, GPU RTX 4080 16GB, 64GB RAM DDR5', tools: 'Mat corte A2, Regla T 80cm', amen: 'Kitchenette con Microondas' },
+      'bot3': { code: 'PC-103', name: 'Módulo Render PC-103 (ARQ)', type: 'CUBICULO_PC', floor: 1, measures: '180x90cm reforzada', hw: 'Intel i7-13700K, GPU RTX 3080 10GB, 32GB RAM DDR5', tools: 'Mat corte A2', amen: 'Kitchenette con Microondas' },
+      'bot4': { code: 'PC-104', name: 'Módulo Render PC-104 (ARQ)', type: 'CUBICULO_PC', floor: 1, measures: '180x90cm reforzada', hw: 'Intel i7-13700K, GPU RTX 3080 10GB, 32GB RAM DDR5', tools: 'Mat corte A2', amen: 'Kitchenette con Microondas', occupiedUntil: '16:30 h' },
+      'bot5': { code: 'PC-105', name: 'Módulo Render PC-105 (ARQ)', type: 'CUBICULO_PC', floor: 1, measures: '180x90cm reforzada', hw: 'Intel i7-13700K, GPU RTX 3080 10GB, 32GB RAM DDR5', tools: 'Mat corte A2', amen: 'Kitchenette con Microondas', occupiedUntil: '20:00 h' },
+      
+      'sgA': { code: 'SALA-101', name: 'Sala Grupal SALA-101 (8p)', type: 'GRUPAL', floor: 1, measures: 'Mesa central 300x120cm', hw: 'TV Monitor 65" 4K Wireless', tools: 'Pizarra acrílica 3m, marcadores', amen: 'Microondas y Hervidora en sala', occupiedUntil: '17:30 h' },
+      'sgB': { code: 'SALA-102', name: 'Sala Grupal SALA-102 (6p)', type: 'GRUPAL', floor: 1, measures: 'Mesa ovalada 240x110cm', hw: 'Conexión HDMI/Wireless', tools: 'Pizarra blanca, reglas', amen: 'Kitchenette a 5m' },
+      'right1': { code: 'MAQ-101', name: 'Mesa Maquetación MAQ-101', type: 'MAQUETA', floor: 1, measures: 'Gran formato 250x150cm recubierta de zinc', hw: 'Sin PC (Taller físico)', tools: '2 Mats de corte A1, pistolas silicona', amen: 'Tacho reciclaje MDF, Microondas' },
+      'right2': { code: 'MAQ-102', name: 'Mesa Maquetación MAQ-102', type: 'MAQUETA', floor: 1, measures: 'Gran formato 250x150cm recubierta de zinc', hw: 'Sin PC (Taller físico)', tools: '2 Mats de corte A1, pistolas silicona', amen: 'Tacho reciclaje MDF, Microondas' },
+      'right3': { code: 'MAQ-103', name: 'Mesa Maquetación MAQ-103', type: 'MAQUETA', floor: 1, measures: 'Gran formato 250x150cm recubierta de zinc', hw: 'Sin PC (Taller físico)', tools: '2 Mats de corte A1, pistolas silicona', amen: 'Tacho reciclaje MDF, Microondas' },
+
+      'p2_c1': { code: 'SIL-201', name: 'Cúbiculo Silent SIL-201', type: 'CUBICULO_LAPTOP', floor: 2, measures: '120x80cm acústico', hw: 'Tomas de carga rápida e iluminación tenue', tools: 'Silla ergónomica regulable', amen: 'Dispensador de agua fría' },
+      'p2_c2': { code: 'SIL-202', name: 'Cúbiculo Silent SIL-202', type: 'CUBICULO_LAPTOP', floor: 2, measures: '120x80cm acústico', hw: 'Tomas de carga rápida', tools: 'Silla ergónomica regulable', amen: 'Dispensador de agua fría' },
+      'p2_c3': { code: 'SIL-203', name: 'Cúbiculo Silent SIL-203', type: 'CUBICULO_LAPTOP', floor: 2, measures: '120x80cm acústico', hw: 'Tomas de carga rápida', tools: 'Silla ergónomica regulable', amen: 'Dispensador de agua fría', occupiedUntil: '15:00 h' },
+      'p2_pc1': { code: 'PC-201', name: 'Estación PC-201 (CAD)', type: 'CUBICULO_PC', floor: 2, measures: '150x80cm', hw: 'Intel i7, GPU RTX 3070 8GB, 32GB RAM, Monitor 32"', tools: 'Mesa abatible', amen: 'Microondas Piso 2' },
+      'p2_pc2': { code: 'PC-202', name: 'Estación PC-202 (CAD)', type: 'CUBICULO_PC', floor: 2, measures: '150x80cm', hw: 'Intel i7, GPU RTX 3070 8GB, 32GB RAM, Monitor 32"', tools: 'Mesa abatible', amen: 'Microondas Piso 2', occupiedUntil: '16:30 h' },
+      'p2_sg1': { code: 'SALA-201', name: 'Sala Silenciosa SALA-201', type: 'GRUPAL', floor: 2, measures: 'Mesa 220x120cm', hw: 'Monitor de apoyo para laptop', tools: 'Pizarra portátil', amen: 'Hervidora de agua a 5m' },
+
+      'p3_cad1': { code: 'CAD-301', name: 'Laboratorio CAD-301', type: 'CUBICULO_PC', floor: 3, measures: '160x85cm ergonómico', hw: 'Intel i9 12th Gen, RTX 3080 10GB, 32GB RAM, Doble Monitor 27"', tools: 'Luz articulada LED', amen: 'Kitchenette Mediateca' },
+      'p3_cad2': { code: 'CAD-302', name: 'Laboratorio CAD-302', type: 'CUBICULO_PC', floor: 3, measures: '160x85cm ergonómico', hw: 'Intel i9 12th Gen, RTX 3080 10GB, 32GB RAM, Doble Monitor 27"', tools: 'Luz articulada LED', amen: 'Kitchenette Mediateca', occupiedUntil: '18:00 h' },
+      'p3_plt': { code: 'PLT-301', name: 'Área Plotter PLT-301', type: 'MAQUETA', floor: 3, measures: 'Mesa de impresión A0/A1 300x120cm', hw: 'Conexión directa a Plotter de corte y ploteo HP', tools: 'Cúter industrial, guías de corte', amen: 'Microondas e impresora 3D' }
+    };
+
+    function switchFloor(floorNum) {
+      if (hasActiveReservation) return;
+      currentFloor = floorNum;
+      
+      const b1 = document.getElementById('btnFloor1');
+      const b2 = document.getElementById('btnFloor2');
+      const b3 = document.getElementById('btnFloor3');
+      const title = document.getElementById('lblFloorTitle');
+
+      [b1, b2, b3].forEach(b => {
+        b.className = "border border-slate-200 rounded-xl p-2.5 text-left transition hover:border-slate-300 opacity-70 shrink-0 w-36 lg:w-full";
+      });
+
+      if (floorNum === 1) {
+        b1.className = "border-2 border-uc-purple bg-purple-50/60 rounded-xl p-2.5 text-left transition shrink-0 w-40 lg:w-full";
+        title.innerText = "Piso 1 • Taller de Arquitectura y Módulos Render";
+      } else if (floorNum === 2) {
+        b2.className = "border-2 border-uc-purple bg-purple-50/60 rounded-xl p-2.5 text-left transition shrink-0 w-40 lg:w-full";
+        title.innerText = "Piso 2 • Cúbiculos Silent y Zona de Estudio Individual";
+      } else if (floorNum === 3) {
+        b3.className = "border-2 border-uc-purple bg-purple-50/60 rounded-xl p-2.5 text-left transition shrink-0 w-40 lg:w-full";
+        title.innerText = "Piso 3 • Mediateca, Laboratorio CAD y Área de Plotter Pro";
+      }
+
+      renderFloorSVG(floorNum);
+      applyFilters();
+      updateManagementPanel();
+    }
+
+    function renderFloorSVG(floorNum) {
+      const svg = document.getElementById('svgMap');
+      if (!svg) return;
+      
+      if (floorNum === 1) {
+        svg.innerHTML = `
+          <rect x="10" y="10" width="930" height="440" rx="8" fill="#ffffff" stroke="#94a3b8" stroke-width="2.5"/>
+          <path d="M 540 10 L 580 10" stroke="#0f172a" stroke-width="4" stroke-dasharray="3"/>
+          <path d="M 540 450 L 580 450" stroke="#0f172a" stroke-width="4" stroke-dasharray="3"/>
+
+          <rect x="20" y="220" width="170" height="220" fill="none" stroke="#cbd5e1" stroke-width="2"/>
+          <g id="node_c14" class="space-node node-ocup" onclick="handleSpaceClick('c14')">
+            <rect x="110" y="240" width="65" height="45" rx="4"/>
+            <text x="142" y="267" font-size="9" font-weight="bold" text-anchor="middle">CUB-101</text>
+          </g>
+
+          <g id="node_top1" class="space-node node-ocup" onclick="handleSpaceClick('top1')"><rect x="330" y="25" width="34" height="35" rx="3"/><text x="347" y="46" font-size="8" font-weight="bold" text-anchor="middle">LAP-101</text></g>
+          <g id="node_top2" class="space-node node-disp" onclick="handleSpaceClick('top2')"><rect x="370" y="25" width="34" height="35" rx="3"/><text x="387" y="46" font-size="8" font-weight="bold" text-anchor="middle">LAP-102</text></g>
+          <g id="node_top3" class="space-node node-ocup" onclick="handleSpaceClick('top3')"><rect x="410" y="25" width="34" height="35" rx="3"/><text x="427" y="46" font-size="8" font-weight="bold" text-anchor="middle">LAP-103</text></g>
+          <g id="node_top4" class="space-node node-ocup" onclick="handleSpaceClick('top4')"><rect x="450" y="25" width="34" height="35" rx="3"/><text x="467" y="46" font-size="8" font-weight="bold" text-anchor="middle">LAP-104</text></g>
+          <g id="node_top5" class="space-node node-ocup" onclick="handleSpaceClick('top5')"><rect x="490" y="25" width="34" height="35" rx="3"/><text x="507" y="46" font-size="8" font-weight="bold" text-anchor="middle">LAP-105</text></g>
+
+          <rect x="320" y="80" width="220" height="250" fill="none" stroke="#e2e8f0" stroke-width="2" stroke-dasharray="4"/>
+          <g id="node_mid1" class="space-node node-ocup" onclick="handleSpaceClick('mid1')"><rect x="490" y="100" width="38" height="28" rx="3"/><text x="509" y="117" font-size="7" font-weight="bold" text-anchor="middle">CUB-102</text></g>
+          <g id="node_mid2" class="space-node node-ocup" onclick="handleSpaceClick('mid2')"><rect x="490" y="135" width="38" height="28" rx="3"/><text x="509" y="152" font-size="7" font-weight="bold" text-anchor="middle">CUB-103</text></g>
+          <g id="node_mid3" class="space-node node-ocup" onclick="handleSpaceClick('mid3')"><rect x="490" y="170" width="38" height="28" rx="3"/><text x="509" y="187" font-size="7" font-weight="bold" text-anchor="middle">CUB-104</text></g>
+          <g id="node_mid4" class="space-node node-disp" onclick="handleSpaceClick('mid4')"><rect x="490" y="205" width="38" height="28" rx="3"/><text x="509" y="222" font-size="7" font-weight="bold" text-anchor="middle">CUB-105</text></g>
+          <g id="node_mid5" class="space-node node-ocup" onclick="handleSpaceClick('mid5')"><rect x="490" y="240" width="38" height="28" rx="3"/><text x="509" y="257" font-size="7" font-weight="bold" text-anchor="middle">CUB-106</text></g>
+
+          <text x="330" y="390" font-size="11" font-weight="bold" fill="#532885">Módulos Render (GPU Exclusivo ARQ)</text>
+          <g id="node_bot1" class="space-node node-ocup" onclick="handleSpaceClick('bot1')"><rect x="330" y="400" width="34" height="35" rx="3"/><text x="347" y="421" font-size="8" font-weight="bold" text-anchor="middle">PC-101</text></g>
+          <g id="node_bot2" class="space-node node-disp" onclick="handleSpaceClick('bot2')"><rect x="370" y="400" width="34" height="35" rx="3"/><text x="387" y="421" font-size="8" font-weight="bold" text-anchor="middle">PC-102</text></g>
+          <g id="node_bot3" class="space-node node-disp" onclick="handleSpaceClick('bot3')"><rect x="410" y="400" width="34" height="35" rx="3"/><text x="427" y="421" font-size="8" font-weight="bold" text-anchor="middle">PC-103</text></g>
+          <g id="node_bot4" class="space-node node-ocup" onclick="handleSpaceClick('bot4')"><rect x="450" y="400" width="34" height="35" rx="3"/><text x="467" y="421" font-size="8" font-weight="bold" text-anchor="middle">PC-104</text></g>
+          <g id="node_bot5" class="space-node node-ocup" onclick="handleSpaceClick('bot5')"><rect x="490" y="400" width="34" height="35" rx="3"/><text x="507" y="421" font-size="8" font-weight="bold" text-anchor="middle">PC-105</text></g>
+
+          <g id="node_sgA" class="space-node node-ocup" onclick="handleSpaceClick('sgA')">
+            <rect x="600" y="30" width="160" height="150" rx="6"/>
+            <text x="680" y="110" font-size="15" font-weight="bold" text-anchor="middle">SALA-101</text>
+          </g>
+          <g id="node_sgB" class="space-node node-disp" onclick="handleSpaceClick('sgB')">
+            <rect x="600" y="210" width="160" height="130" rx="6"/>
+            <rect x="635" y="250" width="90" height="45" rx="15" fill="#cbd5e1" stroke="#94a3b8"/>
+            <text x="680" y="277" font-size="13" font-weight="bold" text-anchor="middle">SALA-102</text>
+          </g>
+
+          <g id="node_right1" class="space-node node-disp" onclick="handleSpaceClick('right1')">
+            <rect x="785" y="30" width="135" height="120" rx="6"/>
+            <text x="852" y="95" font-size="13" font-weight="bold" text-anchor="middle">MAQ-101</text>
+          </g>
+          <g id="node_right2" class="space-node node-disp" onclick="handleSpaceClick('right2')">
+            <rect x="785" y="165" width="135" height="130" rx="6"/>
+            <text x="852" y="235" font-size="13" font-weight="bold" text-anchor="middle">MAQ-102</text>
+          </g>
+          <g id="node_right3" class="space-node node-disp" onclick="handleSpaceClick('right3')">
+            <rect x="785" y="310" width="135" height="125" rx="6"/>
+            <text x="852" y="375" font-size="13" font-weight="bold" text-anchor="middle">MAQ-103</text>
+          </g>
+        `;
+      } else if (floorNum === 2) {
+        svg.innerHTML = `
+          <rect x="10" y="10" width="930" height="440" rx="8" fill="#ffffff" stroke="#94a3b8" stroke-width="2.5"/>
+          <text x="475" y="40" font-size="14" font-weight="bold" fill="#64748b" text-anchor="middle">PISO 2: ZONA SILENCIOSA DE ESTUDIO INDIVIDUAL</text>
+
+          <g id="node_p2_c1" class="space-node node-disp" onclick="handleSpaceClick('p2_c1')">
+            <rect x="60" y="80" width="180" height="90" rx="6"/>
+            <text x="150" y="130" font-size="14" font-weight="bold" text-anchor="middle">SIL-201</text>
+          </g>
+          <g id="node_p2_c2" class="space-node node-disp" onclick="handleSpaceClick('p2_c2')">
+            <rect x="60" y="190" width="180" height="90" rx="6"/>
+            <text x="150" y="240" font-size="14" font-weight="bold" text-anchor="middle">SIL-202</text>
+          </g>
+          <g id="node_p2_c3" class="space-node node-ocup" onclick="handleSpaceClick('p2_c3')">
+            <rect x="60" y="300" width="180" height="90" rx="6"/>
+            <text x="150" y="350" font-size="14" font-weight="bold" text-anchor="middle">SIL-203</text>
+          </g>
+
+          <g id="node_p2_pc1" class="space-node node-disp" onclick="handleSpaceClick('p2_pc1')">
+            <rect x="300" y="120" width="160" height="100" rx="6"/>
+            <text x="380" y="175" font-size="14" font-weight="bold" text-anchor="middle">PC-201</text>
+          </g>
+          <g id="node_p2_pc2" class="space-node node-ocup" onclick="handleSpaceClick('p2_pc2')">
+            <rect x="300" y="250" width="160" height="100" rx="6"/>
+            <text x="380" y="305" font-size="14" font-weight="bold" text-anchor="middle">PC-202</text>
+          </g>
+
+          <g id="node_p2_sg1" class="space-node node-disp" onclick="handleSpaceClick('p2_sg1')">
+            <rect x="550" y="120" width="320" height="230" rx="8"/>
+            <text x="710" y="240" font-size="18" font-weight="bold" text-anchor="middle">SALA-201 (Silenciosa)</text>
+          </g>
+        `;
+      } else if (floorNum === 3) {
+        svg.innerHTML = `
+          <rect x="10" y="10" width="930" height="440" rx="8" fill="#ffffff" stroke="#94a3b8" stroke-width="2.5"/>
+          <text x="475" y="40" font-size="14" font-weight="bold" fill="#64748b" text-anchor="middle">PISO 3: MEDIATECA & LABORATORIO DE DISEÑO CAD</text>
+
+          <g id="node_p3_cad1" class="space-node node-disp" onclick="handleSpaceClick('p3_cad1')">
+            <rect x="80" y="100" width="220" height="120" rx="6"/>
+            <text x="190" y="165" font-size="16" font-weight="bold" text-anchor="middle">CAD-301</text>
+          </g>
+          <g id="node_p3_cad2" class="space-node node-ocup" onclick="handleSpaceClick('p3_cad2')">
+            <rect x="80" y="250" width="220" height="120" rx="6"/>
+            <text x="190" y="315" font-size="16" font-weight="bold" text-anchor="middle">CAD-302</text>
+          </g>
+
+          <g id="node_p3_plt" class="space-node node-disp" onclick="handleSpaceClick('p3_plt')">
+            <rect x="380" y="100" width="480" height="270" rx="8"/>
+            <text x="620" y="240" font-size="20" font-weight="bold" text-anchor="middle">PLT-301 (Zona de Ploteo Pro)</text>
+          </g>
+        `;
+      }
+    }
+
+    function applyFilters() {
+      const selectedType = document.getElementById('resourceFilter').value;
+      const capacity = document.getElementById('capacityFilter').value;
+      const allNodes = document.querySelectorAll('.space-node');
+
+      allNodes.forEach(node => {
+        const id = node.id.replace('node_', '');
+        const data = spacesDB[id];
+        let allowed = true;
+
+        if (data) {
+          if (currentProfile !== 'ARQ' && data.type === 'CUBICULO_PC') {
+            allowed = false;
+          }
+          if (selectedType !== 'ALL' && data.type !== selectedType) {
+            allowed = false;
+          }
+          if (capacity === '1') {
+            if (data.type === 'GRUPAL' || data.type === 'MAQUETA') allowed = false;
+          } else if (capacity === '2-4' || capacity === '5-8') {
+            if (data.type === 'CUBICULO_LAPTOP' || data.type === 'CUBICULO_PC') allowed = false;
+          }
+        }
+
+        if (allowed) {
+          node.classList.remove('node-dimmed');
+        } else {
+          node.classList.add('node-dimmed');
+          if (node.classList.contains('node-sel')) {
+            node.classList.remove('node-sel');
+            node.classList.add('node-disp');
+          }
+        }
+      });
+
+      updateManagementPanel();
+    }
+
+    function applyProfileRules(profile) {
+      currentProfile = profile;
+      const profileTag = document.getElementById('loggedProfileTag');
+      const badge = document.getElementById('badgePriority');
+      const btnExtend = document.getElementById('btnExtend');
+
+      if (profile === 'ARQ') {
+        profileTag.innerText = "🎓 Arquitectura";
+        profileTag.className = "font-bold text-amber-300";
+        badge.innerHTML = `<i data-lucide="sparkles" class="w-4 h-4 text-amber-600"></i> Prioridad ARQ: Bloques extendidos (hasta 12h) y Renders Prioritarios`;
+        badge.className = "bg-amber-50 border border-amber-300 text-amber-900 px-3 py-1.5 rounded-full text-xs font-bold flex items-center gap-1.5 shadow-sm";
+      } else {
+        profileTag.innerText = "👤 Estudiante General";
+        profileTag.className = "font-bold text-sky-300";
+        badge.innerHTML = `<i data-lucide="clock" class="w-4 h-4 text-blue-600"></i> Perfil General: Límite de reserva estándar de 2h (Extender Render deshabilitado)`;
+        badge.className = "bg-blue-50 border border-blue-200 text-blue-900 px-3 py-1.5 rounded-full text-xs font-bold flex items-center gap-1.5 shadow-sm";
+        
+        btnExtend.disabled = true;
+        btnExtend.className = "w-full py-2 px-4 bg-slate-200 text-slate-400 border border-slate-200 rounded-xl font-semibold text-xs transition flex items-center justify-center gap-2 cursor-not-allowed opacity-50";
+      }
+      
+      applyFilters();
+      updateHeaderTimeDisplay();
+      lucide.createIcons();
+    }
+
+    function handleSpaceClick(id) {
+      if (hasActiveReservation) return;
+      const node = document.getElementById('node_' + id);
+      if (node && node.classList.contains('node-dimmed')) return;
+      
+      inspectedSpaceId = id;
+      openSpaceDetailsModal(id);
+    }
+
+    function openSpaceDetailsModal(id) {
+      const data = spacesDB[id] || {
+        code: id.toUpperCase(),
+        name: 'Espacio ' + id.toUpperCase(),
+        measures: 'Mesa estándar de 140 cm × 75 cm',
+        hw: 'Conexión eléctrica doble + Red WiFi 6 UC',
+        tools: 'Silla ergonómica de taller',
+        amen: 'Microondas y Hervidora a 10m en pasillo'
+      };
+
+      document.getElementById('modalSpaceTitle').innerText = `${data.code} - ${data.name}`;
+      document.getElementById('modalSpaceMeasures').innerText = data.measures;
+      document.getElementById('modalSpaceHardware').innerText = data.hw;
+      document.getElementById('modalSpaceTools').innerText = data.tools;
+
+      const statusElem = document.getElementById('modalSpaceStatus');
+      const btnToggle = document.getElementById('btnModalToggleSelect');
+      const timeBox = document.getElementById('modalOccupiedTimeBox');
+      const untilText = document.getElementById('modalOccupiedUntilText');
+      const node = document.getElementById('node_' + id);
+
+      if (node && node.classList.contains('node-ocup')) {
+        statusElem.innerText = 'OCUPADO / EN RENDER (Rojo)';
+        statusElem.className = 'px-2.5 py-0.5 rounded-full font-bold bg-red-100 text-red-800';
+        btnToggle.classList.add('hidden');
+        timeBox.classList.remove('hidden');
+        untilText.innerText = data.occupiedUntil || '16:30 h';
+      } else {
+        timeBox.classList.add('hidden');
+        if (node && node.classList.contains('node-sel')) {
+          statusElem.innerText = 'SELECCIONADO (Azul)';
+          statusElem.className = 'px-2.5 py-0.5 rounded-full font-bold bg-blue-100 text-blue-800';
+          btnToggle.classList.remove('hidden');
+          btnToggle.innerText = 'Quitar selección';
+          btnToggle.className = 'px-4 py-2 bg-slate-600 text-white rounded-lg font-bold hover:bg-slate-700 transition';
+        } else {
+          statusElem.innerText = 'DISPONIBLE (Gris)';
+          statusElem.className = 'px-2.5 py-0.5 rounded-full font-bold bg-slate-200 text-slate-800';
+          btnToggle.classList.remove('hidden');
+          btnToggle.innerText = 'Seleccionar espacio';
+          btnToggle.className = 'px-4 py-2 bg-uc-purple text-white rounded-lg font-bold hover:bg-purple-900 transition';
+        }
+      }
+
+      document.getElementById('modalSpaceDetails').classList.remove('hidden');
+    }
+
+    function toggleSelectFromModal() {
+      if (hasActiveReservation || !inspectedSpaceId) return;
+      const node = document.getElementById('node_' + inspectedSpaceId);
+      
+      if (node) {
+        if (node.classList.contains('node-disp')) {
+          document.querySelectorAll('.node-sel').forEach(n => {
+            n.classList.remove('node-sel');
+            n.classList.add('node-disp');
+          });
+          node.classList.remove('node-disp');
+          node.classList.add('node-sel');
+        } else if (node.classList.contains('node-sel')) {
+          node.classList.remove('node-sel');
+          node.classList.add('node-disp');
+        }
+      }
+      closeModal('modalSpaceDetails');
+      updateManagementPanel();
+    }
+
+    function updateManagementPanel() {
+      const activeNodes = document.querySelectorAll('.node-sel, .node-checked');
+      const selectedNodes = document.querySelectorAll('.node-sel');
+      const summaryList = document.getElementById('selectedListSummary');
+      const card = document.getElementById('detailsCard');
+      
+      const btnConfirm = document.getElementById('btnConfirm');
+      const footerBtnConfirm = document.getElementById('footerBtnConfirm');
+
+      if (activeNodes.length === 0) {
+        summaryList.innerHTML = `<span class="text-slate-400 text-xs italic">Ningún espacio seleccionado por el momento</span>`;
+        card.innerHTML = `
+          <div class="text-center py-6 text-slate-400">
+            <i class="fa-solid fa-hand-pointer text-2xl mb-2 text-slate-300"></i>
+            <p class="text-[11px]">Haz clic en cualquier mesa o cúbículo del plano para inspeccionar sus especificaciones y estado.</p>
+          </div>`;
+        
+        btnConfirm.disabled = true;
+        btnConfirm.className = "w-full py-2.5 px-4 bg-slate-200 text-slate-400 rounded-xl font-bold text-xs cursor-not-allowed transition flex items-center justify-center gap-2";
+        footerBtnConfirm.disabled = true;
+        footerBtnConfirm.className = "px-6 py-2 bg-slate-700 text-slate-400 rounded-lg font-bold text-xs shadow-lg cursor-not-allowed transition flex items-center gap-2";
+        return;
+      }
+
+      summaryList.innerHTML = '';
+      let lastActiveId = null;
+
+      activeNodes.forEach(node => {
+        const id = node.id.replace('node_', '');
+        lastActiveId = id;
+        const data = spacesDB[id] || { code: id.toUpperCase(), name: 'Espacio ' + id.toUpperCase() };
+
+        const chip = document.createElement('span');
+        if (hasActiveReservation) {
+          chip.className = "bg-emerald-600/30 text-emerald-300 border border-emerald-500/40 px-2.5 py-1 rounded-md text-[11px] font-semibold";
+          chip.innerText = `${data.code || id.toUpperCase()} (Reservado)`;
+        } else {
+          chip.className = "bg-blue-600/30 text-blue-300 border border-blue-500/40 px-2.5 py-1 rounded-md text-[11px] font-semibold";
+          chip.innerText = `${data.code || id.toUpperCase()}`;
+        }
+        summaryList.appendChild(chip);
+      });
+
+      if (lastActiveId) {
+        const data = spacesDB[lastActiveId] || { code: lastActiveId.toUpperCase(), name: 'Espacio ' + lastActiveId, hw: 'Conectividad Estándar' };
+        card.innerHTML = `
+          <div class="font-bold text-slate-800 mb-1">${data.code} - ${data.name}</div>
+          <div class="text-[11px] text-slate-600 mb-2">${data.hw || 'Estación de estudio amplia'}</div>
+          <div class="text-[10px] bg-white p-2 rounded border space-y-1">
+            <div>• Medidas: <strong>${data.measures || '150 x 80 cm'}</strong></div>
+            <div>• Equipamiento: <strong>${data.tools || 'Silla de taller, enchufes'}</strong></div>
+          </div>
+        `;
+      }
+
+      if (!hasActiveReservation && selectedNodes.length > 0) {
+        btnConfirm.disabled = false;
+        btnConfirm.className = "w-full py-2.5 px-4 bg-uc-purple hover:bg-uc-darkPurple text-white rounded-xl font-bold text-xs shadow transition cursor-pointer flex items-center justify-center gap-2";
+        footerBtnConfirm.disabled = false;
+        footerBtnConfirm.className = "px-6 py-2 bg-uc-purple hover:bg-purple-800 text-white rounded-lg font-bold text-xs shadow-lg transition flex items-center gap-2 cursor-pointer";
+      }
+    }
+
+    function openConfirmModal() {
+      const selectedNodes = document.querySelectorAll('.node-sel');
+      if (selectedNodes.length === 0 || hasActiveReservation) return;
+
+      const activeId = selectedNodes[0].id.replace('node_', '');
+      const data = spacesDB[activeId] || { code: 'ESP-101', name: 'Espacio de Estudio' };
+
+      document.getElementById('modalConfirmSpaceName').innerText = `${data.code} - ${data.name}`;
+      document.getElementById('modalConfirmDateText').innerText = formatDateDisplay(selectedReservationDate);
+      
+      const durationSelect = document.getElementById('modalDurationSelect');
+      
+      for (let i = 0; i < durationSelect.options.length; i++) {
+        const opt = durationSelect.options[i];
+        const val = parseInt(opt.value);
+        if (currentProfile === 'GEN' && val > 2) {
+          opt.style.display = 'none';
+        } else {
+          opt.style.display = 'block';
+        }
+      }
+
+      if (currentProfile === 'GEN') {
+        durationSelect.value = "2";
+        document.getElementById('modalDurationHint').innerText = "⚠️ Alumnos Generales: Máx. 2 horas permitidas";
+      } else {
+        durationSelect.value = "4";
+        document.getElementById('modalDurationHint').innerText = "✨ Prioridad ARQ: Bloques extendidos disponibles (hasta 12h)";
+      }
+
+      onDurationChanged();
+      document.getElementById('modalConfirmReservation').classList.remove('hidden');
+    }
+
+    function onDurationChanged() {
+      const durationSelect = document.getElementById('modalDurationSelect');
+      let hours = parseInt(durationSelect.value);
+
+      if (currentProfile === 'GEN' && hours > 2) {
+        hours = 2;
+        durationSelect.value = "2";
+      }
+      confirmedDurationHours = hours;
+
+      const startHour = parseFloat(document.getElementById('timeFilter').value || 10.5);
+      const startFmt = (h) => {
+        const hrs = Math.floor(h);
+        const mins = (h % 1 === 0) ? '00' : '30';
+        return `${hrs < 10 ? '0' + hrs : hrs}:${mins} h`;
+      };
+
+      document.getElementById('modalStartTimeText').innerText = startFmt(startHour);
+      const endCalc = calculateEndDateTime(selectedReservationDate, startHour, hours);
+      document.getElementById('modalEndTimeText').innerText = endCalc.fullText;
+    }
+
+    function submitFinalReservation() {
+      const phoneInput = document.getElementById('inputUserPhone').value.trim();
+      if (!phoneInput || phoneInput.length < 9) {
+        alert('Por favor, ingresa un número de celular válido de 9 dígitos.');
+        return;
+      }
+
+      const startHour = parseFloat(document.getElementById('timeFilter').value || 10.5);
+      const startFmt = (h) => {
+        const hrs = Math.floor(h);
+        const mins = (h % 1 === 0) ? '00' : '30';
+        return `${hrs < 10 ? '0' + hrs : hrs}:${mins}`;
+      };
+
+      const endCalc = calculateEndDateTime(selectedReservationDate, startHour, confirmedDurationHours);
+
+      document.getElementById('ticketDateSummary').innerText = `Inicio: ${formatDateDisplay(selectedReservationDate)} (${startFmt(startHour)})`;
+      document.getElementById('ticketDurationSummary').innerText = `Fin: ${endCalc.fullText} • Cel: ${phoneInput}`;
+
+      closeModal('modalConfirmReservation');
+      setReservationLockState(true);
+
+      document.getElementById('qrTicketBox').classList.remove('hidden');
+      document.getElementById('qrCodeText').innerText = `UC-${currentProfile}-2026-CONF`;
+      
+      const btnConfirm = document.getElementById('btnConfirm');
+      btnConfirm.disabled = true;
+      btnConfirm.className = "w-full py-2.5 px-4 bg-slate-100 text-slate-400 rounded-xl font-bold text-xs cursor-not-allowed flex items-center justify-center gap-2";
+
+      const footerBtnConfirm = document.getElementById('footerBtnConfirm');
+      footerBtnConfirm.disabled = true;
+      footerBtnConfirm.className = "px-6 py-2 bg-slate-700 text-slate-400 rounded-lg font-bold text-xs cursor-not-allowed flex items-center gap-2";
+
+      const btnQR = document.getElementById('btnQR');
+      btnQR.disabled = false;
+      btnQR.className = "w-full py-2 px-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold text-xs shadow transition cursor-pointer flex items-center justify-center gap-2";
+      
+      updateManagementPanel();
+      showAlert(`Reserva confirmada con término el ${endCalc.fullText}. Te enviamos el QR al WhatsApp del ${phoneInput}.`, 'blue');
+    }
+
+    function simulateQRCheckIn() {
+      const selectedNodes = document.querySelectorAll('.node-sel');
+      selectedNodes.forEach(node => {
+        node.classList.remove('node-sel', 'node-disp');
+        node.classList.add('node-checked');
+      });
+
+      showAlert('¡Check-in Verificado por QR! Tu espacio figura en VERDE.', 'emerald');
+      
+      const btnQR = document.getElementById('btnQR');
+      btnQR.disabled = true;
+      btnQR.className = "w-full py-2 px-4 bg-slate-100 text-slate-400 border border-slate-200 rounded-xl font-semibold text-xs cursor-not-allowed flex items-center justify-center gap-2";
+
+      const btnExtend = document.getElementById('btnExtend');
+      const btnRelease = document.getElementById('btnRelease');
+
+      if (currentProfile === 'ARQ') {
+        btnExtend.disabled = false;
+        btnExtend.className = "w-full py-2 px-4 bg-amber-500 hover:bg-amber-600 text-white rounded-xl font-bold text-xs shadow transition cursor-pointer flex items-center justify-center gap-2";
+      } else {
+        btnExtend.disabled = true;
+        btnExtend.className = "w-full py-2 px-4 bg-slate-200 text-slate-400 border border-slate-200 rounded-xl font-semibold text-xs transition flex items-center justify-center gap-2 opacity-50";
+      }
+
+      btnRelease.disabled = false;
+      btnRelease.className = "w-full py-2 px-4 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded-xl font-semibold text-xs cursor-pointer transition flex items-center justify-center gap-2";
+
+      updateManagementPanel();
+    }
+
+    function extendRenderSession() {
+      if (currentProfile !== 'ARQ') return;
+      showAlert('Sesión de Render Protegida: Se agregaron +2 Horas continuas sin interrupción.', 'amber');
+    }
+
+    function releaseSpace() {
+      const checkedNodes = document.querySelectorAll('.node-checked, .node-sel');
+      checkedNodes.forEach(node => {
+        node.classList.remove('node-checked', 'node-sel');
+        node.classList.add('node-disp');
+      });
+
+      setReservationLockState(false);
+      document.getElementById('qrTicketBox').classList.add('hidden');
+      showAlert('Espacio liberado con éxito. Ya puedes seleccionar y reservar un nuevo espacio.', 'slate');
+      
+      resetActionButtons();
+      updateManagementPanel();
+    }
+
+    function clearSelections() {
+      if (hasActiveReservation) return;
+      const selectedNodes = document.querySelectorAll('.node-sel');
+      selectedNodes.forEach(node => {
+        node.classList.remove('node-sel');
+        node.classList.add('node-disp');
+      });
+      resetActionButtons();
+      updateManagementPanel();
+    }
+
+    function resetActionButtons() {
+      const btnConfirm = document.getElementById('btnConfirm');
+      btnConfirm.disabled = true;
+      btnConfirm.className = "w-full py-2.5 px-4 bg-slate-200 text-slate-400 rounded-xl font-bold text-xs cursor-not-allowed flex items-center justify-center gap-2";
+
+      const footerBtnConfirm = document.getElementById('footerBtnConfirm');
+      footerBtnConfirm.disabled = true;
+      footerBtnConfirm.className = "px-6 py-2 bg-slate-700 text-slate-400 rounded-lg font-bold text-xs cursor-not-allowed transition flex items-center gap-2";
+
+      const btnQR = document.getElementById('btnQR');
+      btnQR.disabled = true;
+      btnQR.className = "w-full py-2 px-4 bg-slate-200 text-slate-400 border border-slate-200 rounded-xl font-semibold text-xs cursor-not-allowed flex items-center justify-center gap-2";
+
+      const btnExtend = document.getElementById('btnExtend');
+      btnExtend.disabled = true;
+      btnExtend.className = "w-full py-2 px-4 bg-slate-200 text-slate-400 border border-slate-200 rounded-xl font-semibold text-xs cursor-not-allowed flex items-center justify-center gap-2 opacity-50";
+
+      const btnRelease = document.getElementById('btnRelease');
+      btnRelease.disabled = true;
+      btnRelease.className = "w-full py-2 px-4 bg-slate-200 text-slate-400 rounded-xl font-semibold text-xs cursor-not-allowed flex items-center justify-center gap-2";
+    }
+
+    function updateHeaderTimeDisplay() {
+      const startHour = parseFloat(document.getElementById('timeFilter').value || 10.5);
+      const fmt = (h) => {
+        const hrs = Math.floor(h);
+        const mins = (h % 1 === 0) ? '00' : '30';
+        return `${hrs < 10 ? '0' + hrs : hrs}:${mins}`;
+      };
+      document.getElementById('lblHeaderTime').innerText = `${fmt(startHour)} - ${fmt(startHour + 4)}`;
+    }
+
+    function showAlert(msg, color) {
+      const alertBox = document.getElementById('statusAlert');
+      alertBox.classList.remove('hidden');
+
+      let colorClasses = 'bg-blue-50 text-blue-800 border border-blue-200';
+      if (color === 'emerald') colorClasses = 'bg-emerald-50 text-emerald-800 border border-emerald-200';
+      if (color === 'amber') colorClasses = 'bg-amber-50 text-amber-800 border border-amber-200';
+      if (color === 'slate') colorClasses = 'bg-slate-100 text-slate-700 border border-slate-200';
+
+      alertBox.className = `p-3 rounded-xl text-xs font-semibold mb-3 flex items-start gap-2 ${colorClasses}`;
+      alertBox.innerHTML = `<i class="fa-solid fa-circle-info mt-0.5"></i> <span>${msg}</span>`;
+    }
+
+    function closeModal(id) {
+      document.getElementById(id).classList.add('hidden');
+    }
+
+    // --- DETECCIÓN REAL AUTOMÁTICA DEL QR FÍSICO POR URL ---
+    function checkUrlQrParam() {
+      const urlParams = new URLSearchParams(window.location.search);
+      const salaParam = urlParams.get('sala');
+      if (salaParam) {
+        for (const [key, val] of Object.entries(spacesDB)) {
+          if (val.code === salaParam) {
+            switchFloor(val.floor);
+            setTimeout(() => {
+              const node = document.getElementById('node_' + key);
+              if (node) {
+                node.classList.remove('node-disp', 'node-ocup');
+                node.classList.add('node-checked');
+                setReservationLockState(true);
+                document.getElementById('qrTicketBox').classList.remove('hidden');
+                document.getElementById('qrCodeText').innerText = `CHECK-IN: ${salaParam}`;
+                showAlert(`¡Escaneo de QR físico detectado con éxito! Check-in automático verificado para la ${salaParam}.`, 'emerald');
+              }
+            }, 300);
+            break;
+          }
+        }
+      }
+    }
+
+    window.onload = function() {
+      initDefaultDate();
+      renderFloorSVG(1);
+      applyFilters();
+      updateHeaderTimeDisplay();
+      updateManagementPanel();
+      lucide.createIcons();
+    };
+  </script>
+</body>
+</html>
